@@ -1,5 +1,47 @@
 #include "iGraphics.h"
 
+int width = 500, height = 650;
+
+
+
+
+
+
+void drawAxis()
+{
+    iSetColor(255, 255, 255);
+    iLine(0, 50, width, 50);
+}
+
+
+double angle = 0;
+
+
+
+
+
+void drawCannon()
+{
+    double cannon_x = 30*sin(angle * 3.1416/180);
+    double cannon_y = 30*cos(angle * 3.1416/180);
+    iSetLineWidth(2);
+    iSetColor(255,255,255);
+    iLine(250-5,50,250+cannon_x-5,50+cannon_y);
+    iLine(250+5,50,250+cannon_x+5,50+cannon_y);
+}
+
+double ball_x,ball_y;
+ball_x = 250;
+ball_y = 50;
+int throw_ball = 0;
+
+
+void drawBall()
+{
+    iSetColor(255,0,0);
+    
+}
+
 /*
 function iDraw() is called again and again by the system.
 */
@@ -7,7 +49,16 @@ void iDraw()
 {
     // place your drawing codes here
     iClear();
-    iText(140, 180, "Hello World");
+    iText(200, 300, "Hello World");
+
+    iSetLineWidth(3);
+    drawAxis();
+
+    drawCannon();
+
+
+
+
 }
 
 /*
@@ -64,6 +115,12 @@ void iKeyboard(unsigned char key)
     case 'q':
         // do something with 'q'
         break;
+    case 'a':
+        angle-=5;
+        break;
+    case 'd':
+        angle+=5;
+        break;
     // place your codes for other keys here
     default:
         break;
@@ -86,6 +143,7 @@ void iSpecialKeyboard(unsigned char key)
     case GLUT_KEY_END:
         // do something
         break;
+
     // place your codes for other keys here
     default:
         break;
@@ -96,6 +154,8 @@ int main(int argc, char *argv[])
 {
     glutInit(&argc, argv);
     // place your own initialization codes here.
-    iInitialize(400, 400, "demooo");
+    iInitialize(width, height, "demooo");
+
+
     return 0;
 }
