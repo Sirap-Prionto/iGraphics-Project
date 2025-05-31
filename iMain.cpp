@@ -30,16 +30,37 @@ void drawCannon()
     iLine(250+5,50,250+cannon_x+5,50+cannon_y);
 }
 
-double ball_x,ball_y;
-ball_x = 250;
-ball_y = 50;
+double ball_x = 250;
+double ball_y = 50;
 int throw_ball = 0;
+int ball_radius = 5;
+double dx;
+double dy;
 
+void setBall()
+{
+    throw_ball = 1;
+    dx = .5*sin(angle * 3.1416/180);
+    dy = .5*cos(angle * 3.1416/180);
+}
 
 void drawBall()
 {
+
     iSetColor(255,0,0);
-    
+    iFilledCircle(ball_x,ball_y, ball_radius);
+
+    if(ball_x - ball_radius<0 || ball_x + ball_radius > width){
+        dx = -dx;
+    }
+    if(ball_y - ball_radius<0 || ball_y + ball_radius > height){
+        dy = -dy;
+    }
+
+    ball_x+=dx;
+    ball_y+=dy;
+
+
 }
 
 /*
@@ -56,7 +77,8 @@ void iDraw()
 
     drawCannon();
 
-
+    if(throw_ball)
+        drawBall();
 
 
 }
@@ -120,6 +142,9 @@ void iKeyboard(unsigned char key)
         break;
     case 'd':
         angle+=5;
+        break;
+    case 'w':
+        setBall();
         break;
     // place your codes for other keys here
     default:
