@@ -1,28 +1,68 @@
 #include "iGraphics.h"
 
-int ball_x, ball_y;
-int dx = 5, dy = 7;
-int ball_radius = 7;
+int width = 500, height = 650;
+
+
+
+
+
+
+void drawAxis()
+{
+    iSetColor(255, 255, 255);
+    iLine(0, 50, width, 50);
+}
+
+
+double angle = 0;
+
+
+
+
+
+void drawCannon()
+{
+    double cannon_x = 30*sin(angle * 3.1416/180);
+    double cannon_y = 30*cos(angle * 3.1416/180);
+    iSetLineWidth(2);
+    iSetColor(255,255,255);
+    iLine(250-5,50,250+cannon_x-5,50+cannon_y);
+    iLine(250+5,50,250+cannon_x+5,50+cannon_y);
+}
+
+
 
 /*
-    function iDraw() is called again and again by the system.
+function iDraw() is called again and again by the system.
 */
 void iDraw()
 {
     // place your drawing codes here
-
     iClear();
+    iText(200, 300, "Hello World");
 
-    iSetColor(255, 100, 10);
-    iFilledCircle(ball_x, ball_y, ball_radius);
+    iSetLineWidth(3);
+    drawAxis();
 
-    iSetColor(255, 255, 255);
-    iText(10, 10, "Press p for pause, r for resume, END for exit.");
+    drawCannon();
+
+
+
+
 }
 
 /*
-    function iMouseMove() is called when the user presses and drags the mouse.
-    (mx, my) is the position where the mouse pointer is.
+function iMouseMove() is called when the user moves the mouse.
+(mx, my) is the position where the mouse pointer is.
+*/
+void iMouseMove(int mx, int my)
+{
+    // place your codes here
+}
+
+/*
+function iMouseDrag() is called when the user presses and drags the mouse.
+(mx, my) is the position where the mouse pointer is.
 */
 void iMouseDrag(int mx, int my)
 {
@@ -30,19 +70,8 @@ void iMouseDrag(int mx, int my)
 }
 
 /*
-    function iMouseMove() is called automatically when the mouse pointer is in motion
-*/
-void iMouseMove(int mx, int my)
-{
-    // place your code here
-}
-void iMouseWheel(int dir, int mx, int my)
-{
-}
-
-/*
-    function iMouse() is called when the user presses/releases the mouse.
-    (mx, my) is the position where the mouse pointer is.
+function iMouse() is called when the user presses/releases the mouse.
+(mx, my) is the position where the mouse pointer is.
 */
 void iMouse(int button, int state, int mx, int my)
 {
@@ -57,80 +86,66 @@ void iMouse(int button, int state, int mx, int my)
 }
 
 /*
-    function iKeyboard() is called whenever the user hits a key in keyboard.
-    key- holds the ASCII value of the key pressed.
+function iMouseWheel() is called when the user scrolls the mouse wheel.
+dir = 1 for up, -1 for down.
 */
-void iKeyboard(unsigned char key)
+void iMouseWheel(int dir, int mx, int my)
 {
-    if (key == 'p')
-    {
-        // do something with 'q'
-        iPauseTimer(0);
-    }
-    if (key == 'r')
-    {
-        iResumeTimer(0);
-    }
-    // place your codes for other keys here
+    // place your code here
 }
 
 /*
-    function iSpecialKeyboard() is called whenver user hits special keys like-
-    function keys, home, end, pg up, pg down, arraows etc. you have to use
-    appropriate constants to detect them. A list is:
-    GLUT_KEY_F1, GLUT_KEY_F2, GLUT_KEY_F3, GLUT_KEY_F4, GLUT_KEY_F5, GLUT_KEY_F6,
-    GLUT_KEY_F7, GLUT_KEY_F8, GLUT_KEY_F9, GLUT_KEY_F10, GLUT_KEY_F11, GLUT_KEY_F12,
-    GLUT_KEY_LEFT, GLUT_KEY_UP, GLUT_KEY_RIGHT, GLUT_KEY_DOWN, GLUT_KEY_PAGE UP,
-    GLUT_KEY_PAGE DOWN, GLUT_KEY_HOME, GLUT_KEY_END, GLUT_KEY_INSERT
+function iKeyboard() is called whenever the user hits a key in keyboard.
+key- holds the ASCII value of the key pressed.
 */
+void iKeyboard(unsigned char key)
+{
+    switch (key)
+    {
+    case 'q':
+        // do something with 'q'
+        break;
+    case 'a':
+        angle-=5;
+        break;
+    case 'd':
+        angle+=5;
+        break;
+    // place your codes for other keys here
+    default:
+        break;
+    }
+}
+
+/*
+function iSpecialKeyboard() is called whenver user hits special keys likefunction
+keys, home, end, pg up, pg down, arraows etc. you have to use
+appropriate constants to detect them. A list is:
+GLUT_KEY_F1, GLUT_KEY_F2, GLUT_KEY_F3, GLUT_KEY_F4, GLUT_KEY_F5, GLUT_KEY_F6,
+GLUT_KEY_F7, GLUT_KEY_F8, GLUT_KEY_F9, GLUT_KEY_F10, GLUT_KEY_F11,
+GLUT_KEY_F12, GLUT_KEY_LEFT, GLUT_KEY_UP, GLUT_KEY_RIGHT, GLUT_KEY_DOWN,
+GLUT_KEY_PAGE_UP, GLUT_KEY_PAGE_DOWN, GLUT_KEY_HOME, GLUT_KEY_END,
+GLUT_KEY_INSERT */
 void iSpecialKeyboard(unsigned char key)
 {
-
-    if (key == GLUT_KEY_END)
+    switch (key)
     {
-        exit(0);
-    }
+    case GLUT_KEY_END:
+        // do something
+        break;
+
     // place your codes for other keys here
-}
-
-void ballChange()
-{
-    ball_x += dx;
-    ball_y += dy;
-
-    if (ball_x + ball_radius > iScreenWidth || ball_x - ball_radius < 0)
-    {
-        if (ball_x + ball_radius > iScreenWidth)
-            ball_x = iScreenWidth - ball_radius;
-        else
-            ball_x = ball_radius;
-        dx = -dx;
+    default:
+        break;
     }
-
-    if (ball_y + ball_radius > iScreenHeight || ball_y - ball_radius < 0)
-    {
-        if (ball_y + ball_radius > iScreenHeight)
-            ball_y = iScreenHeight - ball_radius;
-        else
-            ball_y = ball_radius;
-        dy = -dy;
-    }
-}
-
-void randomizeBallPosition()
-{
-    ball_x = rand() % (iScreenWidth - 2 * ball_radius) + ball_radius;
-    ball_y = rand() % (iScreenHeight - 2 * ball_radius) + ball_radius;
 }
 
 int main(int argc, char *argv[])
 {
     glutInit(&argc, argv);
     // place your own initialization codes here.
-    iSetTimer(20, ballChange);
-    // iSetTimer(2000, randomizeBallPosition);
+    iInitialize(width, height, "demooo");
 
-    iInitialize(400, 400, "Ball Demo");
 
     return 0;
 }
