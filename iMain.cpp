@@ -44,22 +44,45 @@ void setBall()
     dy = .5*cos(angle * 3.1416/180);
 }
 
+void resetBall()
+{
+    throw_ball = 0;
+    ball_x = 250;
+    ball_y = 50;
+}
+int color_counter = 0;
+int r = 255;
+int g = 0;
+int b = 0;
 void drawBall()
 {
 
-    iSetColor(255,0,0);
+    iSetColor(r,g,b);
     iFilledCircle(ball_x,ball_y, ball_radius);
 
-    if(ball_x - ball_radius<0 || ball_x + ball_radius > width){
+    if(ball_x - ball_radius<0 || ball_x + ball_radius > width)
         dx = -dx;
-    }
-    if(ball_y - ball_radius<0 || ball_y + ball_radius > height){
+
+    if(ball_y + ball_radius > height)
         dy = -dy;
-    }
+
+
 
     ball_x+=dx;
     ball_y+=dy;
 
+
+
+    if(ball_y - ball_radius<0){
+        resetBall();
+        color_counter++;
+        switch(color_counter%3){
+            case 1: r = 0; g = 255; b = 0;break;
+            case 2: r = 0; g = 0; b = 255;break;
+            case 0: r = 255; g = 0; b = 0;break;
+        }
+
+    }
 
 }
 
@@ -79,6 +102,7 @@ void iDraw()
 
     if(throw_ball)
         drawBall();
+
 
 
 }
@@ -144,7 +168,8 @@ void iKeyboard(unsigned char key)
         angle+=5;
         break;
     case 'w':
-        setBall();
+        if(throw_ball==0)
+            setBall();
         break;
     // place your codes for other keys here
     default:
