@@ -1,12 +1,72 @@
 #include "iGraphics.h"
 
+
 int width = 500, height = 650;
+int ball_radius = 10;
+
+
+typedef struct{
+    int x,y;
+    //0 for red, 1 for green, 2 for blue
+    int red,green,blue;
+
+    int exist;
+}staticBall;
+
+//number of static balls = 500 / (10 * 2) * 3(rows);
+staticBall all_static_balls[3][25];
+
+
+void draw_a_static_ball(staticBall aBall){
+    if(aBall.exist){
+        iSetColor(aBall.red,aBall.green,aBall.blue);
+        iFilledCircle(aBall.x,aBall.y,ball_radius);
+    }
+}
+
+void draw_all_static_ball()
+{
+    for(int i=0; i<3; i++){
+
+        for(int j=0;j<25;j++){
+            draw_a_static_ball(all_static_balls[i][j]);
+        }
+    }
+}
+void fillwithballs(){
+    int c = 0;
+    for(int i=0;i<3;i++){
+
+        for(int j =0;j<25;j++){
+
+            if(i==1 && j==25){
+                continue;
+            }
+            staticBall tempBall;
 
 
 
+            //ekhane ekta switchcase diye ball er x fix korte hobe
 
 
+            tempBall.x =(2*j+1)*ball_radius;
+            if(i==1){
+                tempBall.x+=ball_radius;
+                if(j==24) continue;
+            }
+            tempBall.y = height - (2*i+1)*ball_radius;
+            tempBall.exist =1;
 
+            switch(c%3){
+                case 0:tempBall.red =255;tempBall.blue =0;tempBall.green =0;break;
+                case 1:tempBall.green =255;tempBall.red =0;tempBall.blue =0;break;
+                case 2:tempBall.blue =255;tempBall.red =0;tempBall.green =0;break;
+            }
+            all_static_balls[i][j] = tempBall;
+            c++;
+        }
+    }
+}
 void drawAxis()
 {
     iSetColor(255, 255, 255);
@@ -17,31 +77,17 @@ void drawAxis()
 double angle = 0;
 
 
-
-
-
-void drawCannon()
-{
-    double cannon_x = 30*sin(angle * 3.1416/180);
-    double cannon_y = 30*cos(angle * 3.1416/180);
-    iSetLineWidth(2);
-    iSetColor(255,255,255);
-    iLine(250-5,50,250+cannon_x-5,50+cannon_y);
-    iLine(250+5,50,250+cannon_x+5,50+cannon_y);
-}
-
 double ball_x = 250;
 double ball_y = 50;
 int throw_ball = 0;
-int ball_radius = 5;
 double dx;
 double dy;
 
 void setBall()
 {
     throw_ball = 1;
-    dx = .5*sin(angle * 3.1416/180);
-    dy = .5*cos(angle * 3.1416/180);
+    dx = .4*sin(angle * 3.1416/180);
+    dy = .4*cos(angle * 3.1416/180);
 }
 
 void resetBall()
@@ -85,6 +131,19 @@ void drawBall()
     }
 
 }
+void drawCannon()
+{
+    double cannon_x = 30*sin(angle * 3.1416/180);
+    double cannon_y = 30*cos(angle * 3.1416/180);
+    iSetLineWidth(2);
+    iSetColor(255,255,255);
+    iLine(250-10,50,250+cannon_x-10,50+cannon_y);
+    iLine(250+10,50,250+cannon_x+10,50+cannon_y);
+    if(throw_ball==0){
+        iSetColor(r,g,b);
+        iFilledCircle(250,40, ball_radius);
+    }
+}
 
 /*
 function iDraw() is called again and again by the system.
@@ -95,9 +154,12 @@ void iDraw()
     iClear();
     iText(200, 300, "Hello World");
 
+
+
     iSetLineWidth(3);
     drawAxis();
 
+    draw_all_static_ball();
     drawCannon();
 
     if(throw_ball)
@@ -162,14 +224,19 @@ void iKeyboard(unsigned char key)
         // do something with 'q'
         break;
     case 'a':
-        angle-=5;
+        if(angle>-85)
+            angle-=5;
         break;
     case 'd':
-        angle+=5;
+        if(angle<85)
+            angle+=5;
         break;
     case 'w':
         if(throw_ball==0)
             setBall();
+        break;
+    case 'r':
+        fillwithballs();
         break;
     // place your codes for other keys here
     default:
@@ -202,10 +269,10 @@ void iSpecialKeyboard(unsigned char key)
 
 int main(int argc, char *argv[])
 {
+
     glutInit(&argc, argv);
     // place your own initialization codes here.
     iInitialize(width, height, "demooo");
-
 
     return 0;
 }
