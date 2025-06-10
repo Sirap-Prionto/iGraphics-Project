@@ -67,6 +67,15 @@ void fillwithballs(){
         }
     }
 }
+void noballs()
+{
+    staticBall emptyBall;
+    for(int i = 0;i<3;i++){
+        for(int j=0;j<25;j++){
+            all_static_balls[i][j] = emptyBall;
+        }
+    }
+}
 void drawAxis()
 {
     iSetColor(255, 255, 255);
@@ -168,6 +177,7 @@ void iDraw()
 
 
 }
+int checkco
 
 /*
 function iMouseMove() is called when the user moves the mouse.
@@ -235,9 +245,13 @@ void iKeyboard(unsigned char key)
         if(throw_ball==0)
             setBall();
         break;
-    case 'r':
+    case 'f':
         fillwithballs();
         break;
+    case 'r':
+        noballs();
+        break;
+
     // place your codes for other keys here
     default:
         break;
@@ -272,7 +286,7 @@ int main(int argc, char *argv[])
 
     glutInit(&argc, argv);
     // place your own initialization codes here.
-    iInitialize(width, height, "demooo");
+    iInitialize(width, height, "Bouncing Balls");
 
     return 0;
 }
