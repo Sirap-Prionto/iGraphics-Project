@@ -3,6 +3,7 @@
 
 int width = 500, height = 650;
 int ball_radius = 10;
+int ball_diameter = 2*ball_radius;
 
 
 typedef struct{
@@ -14,29 +15,28 @@ typedef struct{
 }staticBall;
 
 //number of static balls = 500 / (10 * 2) * 3(rows);
-staticBall all_static_balls[3][25];
+staticBall all_static_balls[5][25];
 
 
 void draw_a_static_ball(staticBall aBall){
-    if(aBall.exist){
-        iSetColor(aBall.red,aBall.green,aBall.blue);
-        iFilledCircle(aBall.x,aBall.y,ball_radius);
-    }
+    iSetColor(aBall.red,aBall.green,aBall.blue);
+    iFilledCircle(aBall.x,aBall.y,ball_radius);
 }
 
 void draw_all_static_ball()
 {
-    for(int i=0; i<3; i++){
+    for(int i=0; i<5; i++){
 
         for(int j=0;j<25;j++){
-            draw_a_static_ball(all_static_balls[i][j]);
+            if(all_static_balls[i][j].exist)
+                draw_a_static_ball(all_static_balls[i][j]);
         }
     }
 }
 void fillwithballs(){
-    int c = 0;
-    for(int i=0;i<3;i++){
 
+    for(int i=0;i<3;i++){
+        int c = 0;
         for(int j =0;j<25;j++){
 
             if(i==1 && j==25){
@@ -50,10 +50,6 @@ void fillwithballs(){
 
 
             tempBall.x =(2*j+1)*ball_radius;
-            if(i==1){
-                tempBall.x+=ball_radius;
-                if(j==24) continue;
-            }
             tempBall.y = height - (2*i+1)*ball_radius;
             tempBall.exist =1;
 
@@ -154,6 +150,44 @@ void drawCannon()
     }
 }
 
+
+void check_ball(int i,int j){};
+void check_collision(){
+    int j = ball_x / ball_diameter;
+    int i = (height - ball_y) / ball_diameter;
+
+    if(i>0 && all_static_balls[i-1][j].exist){
+        throw_ball=0;check_ball(i-1,j);}
+    else if(j>0 && all_static_balls[i][j-1].exist){
+        throw_ball=0;check_ball(i,j-1);}
+    else if(j<25 && all_static_balls[i][j+1].exist){
+        throw_ball=0;check_ball(i,j+1);}
+}
+
+
+
+
+//ekhan theke kaj korbo
+
+/*void check_ball(int i,int j){
+    if(r==all_static_balls[i][j].red && g==all_static_balls[i][j].green && b==all_static_balls[i][j].blue){
+        all_static_balls[i][j].exist = 0;
+        if(i>0) check_ball([i-1][j]);
+        if(j>0) check_ball([i][j-1]);
+        if(j<25) check_ball([i][j+1]);
+        if(i<10) check_ball([i+1][j]);//ei line change kora lagtepare
+    }
+    else{
+        all_static_balls[i][j].red = r;
+        all_static_balls[i][j].green =g;
+        all_static_balls[i][j].blue = b;
+        all_static_balls[i][j].exist = 1;
+    }
+}
+*/
+
+
+
 /*
 function iDraw() is called again and again by the system.
 */
@@ -174,10 +208,8 @@ void iDraw()
     if(throw_ball)
         drawBall();
 
-
-
 }
-int checkco
+
 
 /*
 function iMouseMove() is called when the user moves the mouse.
