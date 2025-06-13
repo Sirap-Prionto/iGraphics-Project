@@ -115,6 +115,81 @@ void resetBall()
     }
 }
 
+
+void drawCannon() //---------------------working alright-------------------------------
+{
+    double cannon_x = 30*sin(angle * 3.1416/180);
+    double cannon_y = 30*cos(angle * 3.1416/180);
+    iSetLineWidth(2);
+    iSetColor(255,255,255);
+    iLine(250-10,50,250+cannon_x-10,50+cannon_y);
+    iLine(250+10,50,250+cannon_x+10,50+cannon_y);
+    iSetLineWidth(1);
+    iSetColor(r,g,b);
+    iLine(250,50,250+5*cannon_x,50+5*cannon_y);
+    if(throw_ball==0){
+        iSetColor(r,g,b);
+        iFilledCircle(250,40, ball_radius);
+    }
+}
+int combo = 0;
+void check_neighbour(int i,int j){
+    combo++;
+    all_static_balls[i][j].exist=0;
+    if (all_static_balls[i-1][j].exist){
+        if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
+        check_neighbour(i-1,j);
+        }
+    }
+    if (all_static_balls[i+1][j].exist){
+        if (r==all_static_balls[i+1][j].red && g==all_static_balls[i+1][j].green && b==all_static_balls[i+1][j].blue){
+        check_neighbour(i+1,j);
+        }
+    }
+    if (j!=0 && all_static_balls[i][j-1].exist){
+        if (r==all_static_balls[i][j-1].red && g==all_static_balls[i][j-1].green && b==all_static_balls[i][j-1].blue){
+        check_neighbour(i,j-1);
+        }
+    }
+    if (j!=24 && all_static_balls[i][j+1].exist){
+        if (r==all_static_balls[i][j+1].red && g==all_static_balls[i][j+1].green && b==all_static_balls[i][j+1].blue){
+        check_neighbour(i,j+1);
+        }
+    }
+}
+
+void check_collision(int i, int j){
+    if (all_static_balls[i][j].exist){
+    if (r==all_static_balls[i][j].red && g==all_static_balls[i][j].green && b==all_static_balls[i][j].blue){
+    check_neighbour(i,j);
+
+    }
+    if(combo<2){
+    all_static_balls[i][j].exist=1;
+    if(dy>0 && all_static_balls[i+1][j].exist==0){
+    all_static_balls[i+1][j].exist=1;
+    all_static_balls[i+1][j].red=r;
+    all_static_balls[i+1][j].green=g;
+    all_static_balls[i+1][j].blue=b;
+    }
+    else if(dx>0){
+    all_static_balls[i][j-1].exist=1;
+    all_static_balls[i][j-1].red=r;
+    all_static_balls[i][j-1].green=g;
+    all_static_balls[i][j-1].blue=b;
+    }
+    else if(dx<0){
+    all_static_balls[i][j+1].exist=1;
+    all_static_balls[i][j+1].red=r;
+    all_static_balls[i][j+1].green=g;
+    all_static_balls[i][j+1].blue=b;
+    }
+    }
+    resetBall();
+    }
+
+
+}
 void drawBall(int j)
 {
 
@@ -147,79 +222,6 @@ void drawBall(int j)
     }*/
 
 }
-void drawCannon() //---------------------working alright-------------------------------
-{
-    double cannon_x = 30*sin(angle * 3.1416/180);
-    double cannon_y = 30*cos(angle * 3.1416/180);
-    iSetLineWidth(2);
-    iSetColor(255,255,255);
-    iLine(250-10,50,250+cannon_x-10,50+cannon_y);
-    iLine(250+10,50,250+cannon_x+10,50+cannon_y);
-    iSetLineWidth(1);
-    iSetColor(r,g,b);
-    iLine(250,50,250+5*cannon_x,50+5*cannon_y);
-    if(throw_ball==0){
-        iSetColor(r,g,b);
-        iFilledCircle(250,40, ball_radius);
-    }
-}
-int combo = 0;
-void check_neighbour(int i,int j){
-    all_static_balls[i][j].exist=0;
-    if (all_static_balls[i-1][j].exist){
-        if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
-        check_neighbour(i-1,j);
-        }
-    }
-    if (all_static_balls[i+1][j].exist){
-        if (r==all_static_balls[i+1][j].red && g==all_static_balls[i+1][j].green && b==all_static_balls[i+1][j].blue){
-        check_neighbour(i+1,j);
-        }
-    }
-    if (j!=0 && all_static_balls[i][j-1].exist){
-        if (r==all_static_balls[i][j-1].red && g==all_static_balls[i][j-1].green && b==all_static_balls[i][j-1].blue){
-        check_neighbour(i,j-1);
-        }
-    }
-    if (j!=24 && all_static_balls[i][j+1].exist){
-        if (r==all_static_balls[i][j+1].red && g==all_static_balls[i][j+1].green && b==all_static_balls[i][j+1].blue){
-        check_neighbour(i,j+1);
-        }
-    }
-}
-
-//shobar x y initialization ei set kori-------------
-void check_collision(int i, int j){
-    if (all_static_balls[i][j].exist){
-    if (r==all_static_balls[i][j].red && g==all_static_balls[i][j].green && b==all_static_balls[i][j].blue){
-    check_neighbour(i,j);
-    resetBall();
-    }
-    else{
-    if(dy>0 && all_static_balls[i+1][j].exist==0){
-    all_static_balls[i+1][j].exist=1;
-    all_static_balls[i+1][j].red=r;
-    all_static_balls[i+1][j].green=g;
-    all_static_balls[i+1][j].blue=b;
-    }
-    else if(dx>0){
-    all_static_balls[i][j-1].exist=1;
-    all_static_balls[i][j-1].red=r;
-    all_static_balls[i][j-1].green=g;
-    all_static_balls[i][j-1].blue=b;
-    }
-    else if(dx<0){
-    all_static_balls[i][j+1].exist=1;
-    all_static_balls[i][j+1].red=r;
-    all_static_balls[i][j+1].green=g;
-    all_static_balls[i][j+1].blue=b;
-    }
-    resetBall();
-    }
-
-    }
-}
-
 
 
 
@@ -230,14 +232,16 @@ void iDraw()
 {
     // place your drawing codes here
     iClear();
-    iText(200, 300, "Hello World");
+
+    /*-------------for debug purpose---------------
     char details[100];
     int j = ball_x / ball_diameter;
     int i = (height - ball_y) / ball_diameter;
     sprintf(details, "%lf %lf %i %i",ball_x,ball_y,i,j);
-    iText(200, 200, details);
+    iText(200, 200, details);*/
 
-
+    int j = ball_x / ball_diameter;
+    int i = (height - ball_y) / ball_diameter;
 
     iSetLineWidth(3);
     drawAxis();
@@ -245,9 +249,17 @@ void iDraw()
     draw_all_static_ball();
     drawCannon();
     check_collision(i,j);
+
+
+
     if(throw_ball)
         drawBall(j);
 
+    char cmb[12];
+    sprintf(cmb,"COMBO: %i",(combo>=2)?combo+1:0);
+    iSetColor(255,255,255);
+    iText(200, 300, "Hello World");
+    iText(10, 25, cmb);
 }
 
 
@@ -315,6 +327,7 @@ void iKeyboard(unsigned char key)
         break;
     case 'w':
         if(throw_ball==0)
+            combo=0;
             setBall();
         break;
     case 'f':
