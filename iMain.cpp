@@ -115,7 +115,7 @@ void resetBall()
     }
 }
 
-void drawBall()
+void drawBall(int j)
 {
 
     iSetColor(r,g,b);
@@ -124,19 +124,27 @@ void drawBall()
     if(ball_x - ball_radius<0 || ball_x + ball_radius > width)
         dx = -dx;
 
-    if(ball_y + ball_radius > height)
-        dy = -dy;
-
-
-
-    ball_x+=dx;
-    ball_y+=dy;
-
-
-
-    if(ball_y - ball_radius<0){
+    if(ball_y + ball_radius > height){
+        //resetBall();
+        //dy = -dy;
+        all_static_balls[0][j].exist=1;
+        all_static_balls[0][j].red=r;
+        all_static_balls[0][j].green=g;
+        all_static_balls[0][j].blue=b;
         resetBall();
     }
+    else{
+        ball_x+=dx;
+        ball_y+=dy;
+    }
+
+
+
+
+
+    /*if(ball_y - ball_radius<0){
+        resetBall();
+    }*/
 
 }
 void drawCannon() //---------------------working alright-------------------------------
@@ -155,82 +163,63 @@ void drawCannon() //---------------------working alright------------------------
         iFilledCircle(250,40, ball_radius);
     }
 }
+int combo = 0;
 void check_neighbour(int i,int j){
     all_static_balls[i][j].exist=0;
     if (all_static_balls[i-1][j].exist){
-    if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
-    check_neighbour(i-1,j);
-    }
+        if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
+        check_neighbour(i-1,j);
+        }
     }
     if (all_static_balls[i+1][j].exist){
-    if (r==all_static_balls[i+1][j].red && g==all_static_balls[i+1][j].green && b==all_static_balls[i+1][j].blue){
-    check_neighbour(i+1,j);
-    }
+        if (r==all_static_balls[i+1][j].red && g==all_static_balls[i+1][j].green && b==all_static_balls[i+1][j].blue){
+        check_neighbour(i+1,j);
+        }
     }
     if (j!=0 && all_static_balls[i][j-1].exist){
-    if (r==all_static_balls[i][j-1].red && g==all_static_balls[i][j-1].green && b==all_static_balls[i][j-1].blue){
-    check_neighbour(i,j-1);
-    }
+        if (r==all_static_balls[i][j-1].red && g==all_static_balls[i][j-1].green && b==all_static_balls[i][j-1].blue){
+        check_neighbour(i,j-1);
+        }
     }
     if (j!=24 && all_static_balls[i][j+1].exist){
-    if (r==all_static_balls[i][j+1].red && g==all_static_balls[i][j+1].green && b==all_static_balls[i][j+1].blue){
-    check_neighbour(i,j+1);
-    }
+        if (r==all_static_balls[i][j+1].red && g==all_static_balls[i][j+1].green && b==all_static_balls[i][j+1].blue){
+        check_neighbour(i,j+1);
+        }
     }
 }
 
 //shobar x y initialization ei set kori-------------
 void check_collision(int i, int j){
-    if (all_static_balls[i-1][j].exist){
-    if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
-    check_neighbour(i-1,j);
+    if (all_static_balls[i][j].exist){
+    if (r==all_static_balls[i][j].red && g==all_static_balls[i][j].green && b==all_static_balls[i][j].blue){
+    check_neighbour(i,j);
     resetBall();
     }
     else{
-    all_static_balls[i][j].exist=1;
-    all_static_balls[i][j].red=r;
-    all_static_balls[i][j].green=g;
-    all_static_balls[i][j].blue=b;
+    if(dy>0 && all_static_balls[i+1][j].exist==0){
+    all_static_balls[i+1][j].exist=1;
+    all_static_balls[i+1][j].red=r;
+    all_static_balls[i+1][j].green=g;
+    all_static_balls[i+1][j].blue=b;
+    }
+    else if(dx>0){
+    all_static_balls[i][j-1].exist=1;
+    all_static_balls[i][j-1].red=r;
+    all_static_balls[i][j-1].green=g;
+    all_static_balls[i][j-1].blue=b;
+    }
+    else if(dx<0){
+    all_static_balls[i][j+1].exist=1;
+    all_static_balls[i][j+1].red=r;
+    all_static_balls[i][j+1].green=g;
+    all_static_balls[i][j+1].blue=b;
+    }
     resetBall();
     }
+
     }
 }
 
-
-
-
-
-/*void check_ball(int i,int j){};
-void check_collision(){
-    int j = ball_x / ball_diameter;
-    int i = (height - ball_y) / ball_diameter;
-
-    if(i<=10 && i>0 && all_static_balls[i-1][j].exist){
-        resetBall();}
-    else if(j>0 && all_static_balls[i][j-1].exist){
-        resetBall();}
-    else if(j<25 && all_static_balls[i][j+1].exist){
-        resetBall();}
-}*/
-
-//ekhan theke kaj korbo
-
-/*void check_ball(int i,int j){
-    if(r==all_static_balls[i][j].red && g==all_static_balls[i][j].green && b==all_static_balls[i][j].blue){
-        all_static_balls[i][j].exist = 0;
-        if(i>0) check_ball([i-1][j]);
-        if(j>0) check_ball([i][j-1]);
-        if(j<25) check_ball([i][j+1]);
-        if(i<10) check_ball([i+1][j]);//ei line change kora lagtepare
-    }
-    else{
-        all_static_balls[i][j].red = r;
-        all_static_balls[i][j].green =g;
-        all_static_balls[i][j].blue = b;
-        all_static_balls[i][j].exist = 1;
-    }
-}
-*/
 
 
 
@@ -257,7 +246,7 @@ void iDraw()
     drawCannon();
     check_collision(i,j);
     if(throw_ball)
-        drawBall();
+        drawBall(j);
 
 }
 
