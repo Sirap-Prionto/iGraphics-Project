@@ -147,16 +147,43 @@ void drawCannon() //---------------------working alright------------------------
     iSetColor(255,255,255);
     iLine(250-10,50,250+cannon_x-10,50+cannon_y);
     iLine(250+10,50,250+cannon_x+10,50+cannon_y);
+    iSetLineWidth(1);
+    iSetColor(r,g,b);
+    iLine(250,50,250+5*cannon_x,50+5*cannon_y);
     if(throw_ball==0){
         iSetColor(r,g,b);
         iFilledCircle(250,40, ball_radius);
     }
 }
+void check_neighbour(int i,int j){
+    all_static_balls[i][j].exist=0;
+    if (all_static_balls[i-1][j].exist){
+    if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
+    check_neighbour(i-1,j);
+    }
+    }
+    if (all_static_balls[i+1][j].exist){
+    if (r==all_static_balls[i+1][j].red && g==all_static_balls[i+1][j].green && b==all_static_balls[i+1][j].blue){
+    check_neighbour(i+1,j);
+    }
+    }
+    if (j!=0 && all_static_balls[i][j-1].exist){
+    if (r==all_static_balls[i][j-1].red && g==all_static_balls[i][j-1].green && b==all_static_balls[i][j-1].blue){
+    check_neighbour(i,j-1);
+    }
+    }
+    if (j!=24 && all_static_balls[i][j+1].exist){
+    if (r==all_static_balls[i][j+1].red && g==all_static_balls[i][j+1].green && b==all_static_balls[i][j+1].blue){
+    check_neighbour(i,j+1);
+    }
+    }
+}
+
 //shobar x y initialization ei set kori-------------
 void check_collision(int i, int j){
     if (all_static_balls[i-1][j].exist){
     if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
-    all_static_balls[i-1][j].exist=0;
+    check_neighbour(i-1,j);
     resetBall();
     }
     else{
@@ -290,12 +317,12 @@ void iKeyboard(unsigned char key)
         // do something with 'q'
         break;
     case 'a':
-        if(angle>-85)
-            angle-=5;
+        if(angle>-80)
+            angle-=2.5;
         break;
     case 'd':
-        if(angle<85)
-            angle+=5;
+        if(angle<80)
+            angle+=2.5;
         break;
     case 'w':
         if(throw_ball==0)
