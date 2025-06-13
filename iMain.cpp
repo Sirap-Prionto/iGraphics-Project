@@ -15,17 +15,19 @@ typedef struct{
 }staticBall;
 
 //number of static balls = 500 / (10 * 2) * 3(rows);
-staticBall all_static_balls[5][25];
+staticBall all_static_balls[30][25];
 
 
 void draw_a_static_ball(staticBall aBall){
+
+
     iSetColor(aBall.red,aBall.green,aBall.blue);
     iFilledCircle(aBall.x,aBall.y,ball_radius);
 }
 
 void draw_all_static_ball()
 {
-    for(int i=0; i<5; i++){
+    for(int i=0; i<30; i++){
 
         for(int j=0;j<25;j++){
             if(all_static_balls[i][j].exist)
@@ -33,22 +35,13 @@ void draw_all_static_ball()
         }
     }
 }
+//-------ball er co ordinate draw a static ball e thakbe-----------
 void fillwithballs(){
 
-    for(int i=0;i<3;i++){
+    for(int i=0;i<5;i++){
         int c = 0;
         for(int j =0;j<25;j++){
-
-            if(i==1 && j==25){
-                continue;
-            }
             staticBall tempBall;
-
-
-
-            //ekhane ekta switchcase diye ball er x fix korte hobe
-
-
             tempBall.x =(2*j+1)*ball_radius;
             tempBall.y = height - (2*i+1)*ball_radius;
             tempBall.exist =1;
@@ -62,11 +55,22 @@ void fillwithballs(){
             c++;
         }
     }
+
+    for(int i = 5;i<30;i++){
+        for(int j=0;j<25;j++){
+            staticBall tempBall;
+            tempBall.x =(2*j+1)*ball_radius;
+            tempBall.y = height - (2*i+1)*ball_radius;
+            tempBall.exist =0;
+            all_static_balls[i][j] = tempBall;
+        }
+    }
 }
+//void loweringstaticball(){ball.x;ball.y++} --------time mode er gameplay er jonno-----------
 void noballs()
 {
     staticBall emptyBall;
-    for(int i = 0;i<3;i++){
+    for(int i = 0;i<30;i++){
         for(int j=0;j<25;j++){
             all_static_balls[i][j] = emptyBall;
         }
@@ -87,12 +91,15 @@ double ball_y = 50;
 int throw_ball = 0;
 double dx;
 double dy;
-
+int color_counter = 0;
+int r = 255;
+int g = 0;
+int b = 0;
 void setBall()
 {
     throw_ball = 1;
-    dx = .4*sin(angle * 3.1416/180);
-    dy = .4*cos(angle * 3.1416/180);
+    dx = sin(angle * 3.1416/180);
+    dy = cos(angle * 3.1416/180);
 }
 
 void resetBall()
@@ -100,11 +107,14 @@ void resetBall()
     throw_ball = 0;
     ball_x = 250;
     ball_y = 50;
+    color_counter++;
+    switch(color_counter%3){
+        case 1: r = 0; g = 255; b = 0;break;
+        case 2: r = 0; g = 0; b = 255;break;
+        case 0: r = 255; g = 0; b = 0;break;
+    }
 }
-int color_counter = 0;
-int r = 255;
-int g = 0;
-int b = 0;
+
 void drawBall()
 {
 
@@ -126,17 +136,10 @@ void drawBall()
 
     if(ball_y - ball_radius<0){
         resetBall();
-        color_counter++;
-        switch(color_counter%3){
-            case 1: r = 0; g = 255; b = 0;break;
-            case 2: r = 0; g = 0; b = 255;break;
-            case 0: r = 255; g = 0; b = 0;break;
-        }
-
     }
 
 }
-void drawCannon()
+void drawCannon() //---------------------working alright-------------------------------
 {
     double cannon_x = 30*sin(angle * 3.1416/180);
     double cannon_y = 30*cos(angle * 3.1416/180);
@@ -149,23 +152,39 @@ void drawCannon()
         iFilledCircle(250,40, ball_radius);
     }
 }
-
-
-void check_ball(int i,int j){};
-void check_collision(){
-    int j = ball_x / ball_diameter;
-    int i = (height - ball_y) / ball_diameter;
-
-    if(i>0 && all_static_balls[i-1][j].exist){
-        throw_ball=0;check_ball(i-1,j);}
-    else if(j>0 && all_static_balls[i][j-1].exist){
-        throw_ball=0;check_ball(i,j-1);}
-    else if(j<25 && all_static_balls[i][j+1].exist){
-        throw_ball=0;check_ball(i,j+1);}
+//shobar x y initialization ei set kori-------------
+void check_collision(int i, int j){
+    if (all_static_balls[i-1][j].exist){
+    if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
+    all_static_balls[i-1][j].exist=0;
+    resetBall();
+    }
+    else{
+    all_static_balls[i][j].exist=1;
+    all_static_balls[i][j].red=r;
+    all_static_balls[i][j].green=g;
+    all_static_balls[i][j].blue=b;
+    resetBall();
+    }
+    }
 }
 
 
 
+
+
+/*void check_ball(int i,int j){};
+void check_collision(){
+    int j = ball_x / ball_diameter;
+    int i = (height - ball_y) / ball_diameter;
+
+    if(i<=10 && i>0 && all_static_balls[i-1][j].exist){
+        resetBall();}
+    else if(j>0 && all_static_balls[i][j-1].exist){
+        resetBall();}
+    else if(j<25 && all_static_balls[i][j+1].exist){
+        resetBall();}
+}*/
 
 //ekhan theke kaj korbo
 
@@ -196,6 +215,11 @@ void iDraw()
     // place your drawing codes here
     iClear();
     iText(200, 300, "Hello World");
+    char details[100];
+    int j = ball_x / ball_diameter;
+    int i = (height - ball_y) / ball_diameter;
+    sprintf(details, "%lf %lf %i %i",ball_x,ball_y,i,j);
+    iText(200, 200, details);
 
 
 
@@ -204,7 +228,7 @@ void iDraw()
 
     draw_all_static_ball();
     drawCannon();
-
+    check_collision(i,j);
     if(throw_ball)
         drawBall();
 
