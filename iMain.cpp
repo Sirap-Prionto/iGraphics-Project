@@ -36,7 +36,7 @@ void draw_all_static_ball()
 //-------ball er co ordinate draw a static ball e thakbe-----------
 staticBall emptyBall;
 void set_coordinates(){
-    for(int i = 0;i<30;i++){
+    for(int i = 0;i<31;i++){
         for(int j=0;j<25;j++){
 
             all_static_balls[i][j].x = (2*j+1)*ball_radius;
@@ -71,7 +71,7 @@ void fillwithballs(){
         }
     }
 
-    for(int i = 5;i<30;i++){
+    for(int i = 5;i<31;i++){
         for(int j=0;j<25;j++){
             all_static_balls[i][j] = emptyBall;
         }
