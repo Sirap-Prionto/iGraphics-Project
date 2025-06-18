@@ -176,16 +176,29 @@ void check_collision(int i, int j){
     int startchecking = 0;
     if (all_static_balls[i][j].exist){
         if(dy>0 && all_static_balls[i+1][j].exist==0){
-        i = i+1;
-        j = j;
+            i = i+1;
+            j = j;
         }
         else if(dx>0){
-        i = i;
-        j = j-1;
+            if(all_static_balls[i][j-1].exist==0){
+                i = i;
+                j = j-1;
+            }
+            else{
+                i = i+1;
+                j = j-1;
+            }
+
         }
         else if(dx<0){
-        i = i;
-        j = j+1;
+            if(all_static_balls[i][j-1].exist==0){
+                i = i;
+                j = j+1;
+            }
+            else{
+                i = i+1;
+                j = j-1;
+            }
         }
         startchecking = 1;
     }
@@ -300,7 +313,7 @@ void iDraw()
         drawBall();
 
     char cmb[12];
-    sprintf(cmb,"COMBO: %i",(combo>=2)?combo+1:0);
+    sprintf(cmb,"COMBO: %i",(combo>=2)?combo:0);
     iSetColor(255,255,255);
     iText(200, 300, "Hello World");
     iText(10, 25, cmb);
