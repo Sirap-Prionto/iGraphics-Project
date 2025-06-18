@@ -13,7 +13,7 @@ typedef struct{
 }staticBall;
 
 //number of static balls = 500 / (10 * 2) * 3(rows);
-staticBall all_static_balls[30][25];
+staticBall all_static_balls[31][25];
 
 
 void draw_a_static_ball(staticBall aBall){
@@ -155,7 +155,7 @@ void check_neighbour(int i,int j){
         check_neighbour(i-1,j);
         }
     }
-    if (i!=29 && all_static_balls[i+1][j].exist){
+    if (all_static_balls[i+1][j].exist){
         if (r==all_static_balls[i+1][j].red && g==all_static_balls[i+1][j].green && b==all_static_balls[i+1][j].blue){
         check_neighbour(i+1,j);
         }
@@ -175,7 +175,7 @@ void check_neighbour(int i,int j){
 void check_collision(int i, int j){
     int startchecking = 0;
     if (all_static_balls[i][j].exist){
-        if(dy>0 && all_static_balls[i+1][j].exist==0){
+        if(all_static_balls[i+1][j].exist==0){
             i = i+1;
             j = j;
         }
@@ -285,7 +285,14 @@ void drawBall()
     }*/
 
 }
-
+//----------------------game over function --------------------------------------
+void gameover(){
+    for(int j = 0;j<25;j++){
+        if(all_static_balls[30][j].exist){
+            exit(0);
+        }
+    }
+}
 
 /*
 function iDraw() is called again and again by the system.
@@ -307,7 +314,7 @@ void iDraw()
     drawCannon();
     check_collision(i,j);
 
-
+    gameover();
 
     if(throw_ball)
         drawBall();
