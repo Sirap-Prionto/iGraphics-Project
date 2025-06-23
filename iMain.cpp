@@ -15,6 +15,7 @@ int ball_radius = 10;
 int ball_diameter = 2*ball_radius;
 int v=3;
 int name_taken = 0;
+
 typedef struct{
     int red,green,blue;
     int exist;
@@ -302,6 +303,7 @@ void gameover(){
         }
     }
 }
+
 void curv(int x, int y, int w, int h, int r){
         iFilledRectangle(x + r, y, w - 2*r, h); 
         iFilledRectangle(x, y + r, r, h - 2*r); 
@@ -383,17 +385,21 @@ void iDraw()
             iText(200, 200, details);*/
             int j = ball_x / ball_diameter;
             int i = (height - ball_y) / ball_diameter;
+    
             iSetLineWidth(3);
             drawAxis();
+        
             draw_all_static_ball();
             drawCannon();
             check_collision(i,j);
+        
+            gameover();
+    
             if(throw_ball)
-            {
-                drawBall(j);
-            }
+                drawBall();
+        
             char cmb[12];
-            sprintf(cmb,"COMBO: %i",(combo>=2)?combo+1:0);
+            sprintf(cmb,"COMBO: %i",(combo>=2)?combo:0);
             iSetColor(255,255,255);
             iText(200, 300, "Hello World");
             iText(10, 25, cmb);
