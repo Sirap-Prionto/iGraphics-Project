@@ -82,35 +82,9 @@ void fillwithballs(){
         }
     }
     set_coordinates();
-    set_static_ball(255,255,255,20,20);
+    set_static_ball(255,255,0,20,20);
 }
 //void loweringstaticball(){ball.x;ball.y++} --------time mode er gameplay er jonno-----------
-
-void fillwithdiamond()
-{
-
-
-        set_static_ball(255,0,0,5,10);
-        set_static_ball(0,255,0,5,11);
-        set_static_ball(0,0,255,5,12);
-        set_static_ball(0,0,255,5,13);
-        set_static_ball(0,255,0,5,14);
-        set_static_ball(255,0,0,5,15);
-
-        set_static_ball(255,0,0,6,9);
-        set_static_ball(0,255,0,6,10);
-        set_static_ball(0,0,255,6,11);
-        set_static_ball(0,255,255,6,12);
-        set_static_ball(0,255,255,6,13);
-        set_static_ball(0,0,255,6,14);
-        set_static_ball(0,255,0,6,15);
-        set_static_ball(255,0,0,6,16);
-
-
-
-
-}
-
 
 void noballs()
 {
@@ -120,6 +94,113 @@ void noballs()
         }
     }
 }
+
+void fillwithdiamond()
+{
+    noballs();
+    set_coordinates();
+    for(int i=0;i<11;i++){
+
+        set_static_ball(255,0,0,i+9,i+2);
+        set_static_ball(255,0,0,i+9,-i+2+20);
+
+    }
+    for(int i=0;i<10;i++){
+
+        set_static_ball(0,255,0,i+9,i+3);
+        set_static_ball(0,255,0,i+9,-i+3+18);
+
+    }
+    for(int i=0;i<9;i++){
+
+        set_static_ball(0,0,255,i+9,i+4);
+        set_static_ball(0,0,255,i+9,-i+4+16);
+
+    }
+    for(int i=0;i<8;i++){
+
+        set_static_ball(0,255,255,i+9,i+5);
+        set_static_ball(0,255,255,i+9,-i+5+14);
+
+    }
+    for(int i=0;i<7;i++){
+
+        set_static_ball(0,0,255,i+9,i+6);
+        set_static_ball(0,0,255,i+9,-i+6+12);
+
+    }
+    for(int i=0;i<6;i++){
+
+        set_static_ball(0,255,0,i+9,i+7);
+        set_static_ball(0,255,0,i+9,-i+7+10);
+
+    }
+    for(int i=0;i<5;i++){
+
+        set_static_ball(255,0,255,i+9,i+8);
+        set_static_ball(255,0,255,i+9,-i+8+8);
+
+    }
+    for(int i=0;i<4;i++){
+
+        set_static_ball(255,255,0,i+9,i+9);
+        set_static_ball(255,255,0,i+9,-i+9+6);
+
+    }
+    for(int i=0;i<3;i++){
+
+        set_static_ball(0,255,255,i+9,i+10);
+        set_static_ball(0,255,255,i+9,-i+10+4);
+
+    }
+    for(int i=0;i<2;i++){
+
+        set_static_ball(255,0,0,i+9,i+11);
+        set_static_ball(255,0,0,i+9,-i+11+2);
+
+    }
+    set_static_ball(0,255,0,9,12);
+    set_static_ball(255,0,0,8,12);
+    set_static_ball(0,255,255,8,11);
+    set_static_ball(0,255,255,8,13);
+    set_static_ball(0,255,255,7,12);
+    for(int i=0;i<3;i++){
+        set_static_ball(255,255,0,6+i,12+i);
+        set_static_ball(255,255,0,6+i,12-i);
+    }
+    for(int i=0;i<3;i++){
+        set_static_ball(255,0,255,6+i,12+i+1);
+        set_static_ball(255,0,255,6+i,12-i-1);
+    }
+    for(int i=0;i<3;i++){
+        set_static_ball(0,255,0,6+i,12+i+2);
+        set_static_ball(0,255,0,6+i,12-i-2);
+    }
+    for(int i=0;i<3;i++){
+        set_static_ball(0,0,255,6+i,12+i+3);
+        set_static_ball(0,0,255,6+i,12-i-3);
+    }
+    for(int i=0;i<3;i++){
+        set_static_ball(0,255,255,6+i,12+i+4);
+        set_static_ball(0,255,255,6+i,12-i-4);
+    }
+    for(int i=0;i<3;i++){
+        set_static_ball(0,0,255,6+i,12+i+5);
+        set_static_ball(0,0,255,6+i,12-i-5);
+    }
+    for(int i=0;i<3;i++){
+        set_static_ball(0,255,0,6+i,12+i+6);
+        set_static_ball(0,255,0,6+i,12-i-6);
+    }
+    for(int i=0;i<3;i++){
+        set_static_ball(255,0,0,6+i,12+i+7);
+        set_static_ball(255,0,0,6+i,12-i-7);
+    }
+
+}
+
+
+
 void drawAxis()
 {
     iSetColor(255, 255, 255);
@@ -135,7 +216,7 @@ double ball_y = 50;
 int throw_ball = 0;
 double dx;
 double dy;
-double velocity = 5;
+double velocity = 1;
 int color_counter = 0;
 int r = 255;
 int g = 0;
@@ -205,6 +286,28 @@ void check_neighbour(int i,int j){
         check_neighbour(i,j+1);
         }
     }
+    ///*
+    if (i!=0 && j!=0 && all_static_balls[i-1][j-1].exist){
+        if (r==all_static_balls[i-1][j-1].red && g==all_static_balls[i-1][j-1].green && b==all_static_balls[i-1][j-1].blue){
+        check_neighbour(i-1,j-1);
+        }
+    }
+    if (i!=0 && j!=24 && all_static_balls[i-1][j+1].exist){
+        if (r==all_static_balls[i-1][j+1].red && g==all_static_balls[i-1][j+1].green && b==all_static_balls[i-1][j+1].blue){
+        check_neighbour(i-1,j+1);
+        }
+    }
+    if (j!=0 && all_static_balls[i+1][j-1].exist){
+        if (r==all_static_balls[i+1][j-1].red && g==all_static_balls[i+1][j-1].green && b==all_static_balls[i+1][j-1].blue){
+        check_neighbour(i+1,j-1);
+        }
+    }
+    if (j!=24 && all_static_balls[i+1][j+1].exist){
+        if (r==all_static_balls[i+1][j+1].red && g==all_static_balls[i+1][j+1].green && b==all_static_balls[i+1][j+1].blue){
+        check_neighbour(i+1,j+1);
+        }
+    }
+    //*/
 }
 
 void check_collision(int i, int j){
@@ -226,13 +329,13 @@ void check_collision(int i, int j){
 
         }
         else if(dx<0){
-            if(all_static_balls[i][j-1].exist==0){
+            if(all_static_balls[i][j+1].exist==0){
                 i = i;
                 j = j+1;
             }
             else{
                 i = i+1;
-                j = j-1;
+                j = j+1;
             }
         }
         startchecking = 1;
@@ -268,6 +371,38 @@ void check_collision(int i, int j){
         all_static_balls[i][j+1].exist=1;
         }
     }
+    ///*
+    if (i!=0 && j!=0 && all_static_balls[i-1][j-1].exist){
+        if (r==all_static_balls[i-1][j-1].red && g==all_static_balls[i-1][j-1].green && b==all_static_balls[i-1][j-1].blue){
+        combo++;
+        check_neighbour(i-1,j-1);
+        all_static_balls[i-1][j-1].exist=1;
+        }
+    }
+    if (i!=0 && j!=24 && all_static_balls[i-1][j+1].exist){
+        if (r==all_static_balls[i-1][j+1].red && g==all_static_balls[i-1][j+1].green && b==all_static_balls[i-1][j+1].blue){
+        combo++;
+        check_neighbour(i-1,j+1);
+        all_static_balls[i-1][j+1].exist=1;
+        }
+    }
+    if (j!=0 && all_static_balls[i+1][j-1].exist){
+        if (r==all_static_balls[i+1][j-1].red && g==all_static_balls[i+1][j-1].green && b==all_static_balls[i+1][j-1].blue){
+        combo++;
+        check_neighbour(i+1,j-1);
+        all_static_balls[i+1][j-1].exist=1;
+        }
+    }
+    if (j!=24 && all_static_balls[i+1][j+1].exist){
+        if (r==all_static_balls[i+1][j+1].red && g==all_static_balls[i+1][j+1].green && b==all_static_balls[i+1][j+1].blue){
+        combo++;
+        check_neighbour(i+1,j+1);
+        all_static_balls[i+1][j+1].exist=1;
+        }
+    }
+    //*/
+
+
 
     if(combo<=2){
         all_static_balls[i][j].exist=1;
@@ -297,6 +432,28 @@ void check_collision(int i, int j){
                 all_static_balls[i][j+1].exist=0;
             }
         }
+        ///*
+        if (i!=0 && j!=0 && all_static_balls[i-1][j-1].exist){
+            if (r==all_static_balls[i-1][j-1].red && g==all_static_balls[i-1][j-1].green && b==all_static_balls[i-1][j-1].blue){
+            all_static_balls[i-1][j-1].exist=0;
+            }
+        }
+        if (i!=0 && j!=24 && all_static_balls[i-1][j+1].exist){
+            if (r==all_static_balls[i-1][j+1].red && g==all_static_balls[i-1][j+1].green && b==all_static_balls[i-1][j+1].blue){
+            all_static_balls[i-1][j+1].exist=0;
+            }
+        }
+        if (j!=0 && all_static_balls[i+1][j-1].exist){
+            if (r==all_static_balls[i+1][j-1].red && g==all_static_balls[i+1][j-1].green && b==all_static_balls[i+1][j-1].blue){
+            all_static_balls[i+1][j-1].exist=0;
+            }
+        }
+        if (j!=24 && all_static_balls[i+1][j+1].exist){
+            if (r==all_static_balls[i+1][j+1].red && g==all_static_balls[i+1][j+1].green && b==all_static_balls[i+1][j+1].blue){
+            all_static_balls[i+1][j+1].exist=0;
+            }
+        }
+        //*/
     }
     resetBall();
     }
@@ -430,13 +587,18 @@ void iKeyboard(unsigned char key)
             setBall();
         break;
     case 'f':
-        fillwithballs();
+        //fillwithballs();
         //fillwithdiamond();
         break;
-    case 'r':
+    case '0':
         noballs();
         break;
-
+    case '1':
+        fillwithballs();
+        break;
+    case '2':
+        fillwithdiamond();
+        break;
     // place your codes for other keys here
     default:
         break;
