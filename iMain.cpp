@@ -54,6 +54,8 @@ void set_static_ball(int red,int green,int blue,int i,int j){
     all_static_balls[i][j].y = height - (2*i+1)*ball_radius;
 }
 
+
+
 void fillwithballs(){
 
     for(int i=0;i<5;i++){
@@ -61,10 +63,13 @@ void fillwithballs(){
         for(int j =0;j<25;j++){
             staticBall tempBall;
             tempBall.exist =1;
-            switch(c%3){
+            switch(c%6){
                 case 0:tempBall.red =255;tempBall.blue =0;tempBall.green =0;break;
                 case 1:tempBall.green =255;tempBall.red =0;tempBall.blue =0;break;
                 case 2:tempBall.blue =255;tempBall.red =0;tempBall.green =0;break;
+                case 3:tempBall.blue =0;tempBall.red =255;tempBall.green =255;break;
+                case 4:tempBall.blue =255;tempBall.red =0;tempBall.green =255;break;
+                case 5:tempBall.blue =255;tempBall.red =255;tempBall.green =0;break;
             }
             all_static_balls[i][j] = tempBall;
             c++;
@@ -80,6 +85,32 @@ void fillwithballs(){
     set_static_ball(255,255,255,20,20);
 }
 //void loweringstaticball(){ball.x;ball.y++} --------time mode er gameplay er jonno-----------
+
+void fillwithdiamond()
+{
+
+
+        set_static_ball(255,0,0,5,10);
+        set_static_ball(0,255,0,5,11);
+        set_static_ball(0,0,255,5,12);
+        set_static_ball(0,0,255,5,13);
+        set_static_ball(0,255,0,5,14);
+        set_static_ball(255,0,0,5,15);
+
+        set_static_ball(255,0,0,6,9);
+        set_static_ball(0,255,0,6,10);
+        set_static_ball(0,0,255,6,11);
+        set_static_ball(0,255,255,6,12);
+        set_static_ball(0,255,255,6,13);
+        set_static_ball(0,0,255,6,14);
+        set_static_ball(0,255,0,6,15);
+        set_static_ball(255,0,0,6,16);
+
+
+
+
+}
+
 
 void noballs()
 {
@@ -122,10 +153,14 @@ void resetBall()
     ball_x = 250;
     ball_y = 50;
     color_counter++;
-    switch(color_counter%3){
+    switch(color_counter%6){
+        case 0: r = 255; g = 0; b = 0;break;
         case 1: r = 0; g = 255; b = 0;break;
         case 2: r = 0; g = 0; b = 255;break;
-        case 0: r = 255; g = 0; b = 0;break;
+        case 3: r = 0; g = 255; b = 255;break;
+        case 4: r = 255; g = 0; b = 255;break;
+        case 5: r = 255; g = 255; b = 0;break;
+
     }
 }
 
@@ -396,6 +431,7 @@ void iKeyboard(unsigned char key)
         break;
     case 'f':
         fillwithballs();
+        //fillwithdiamond();
         break;
     case 'r':
         noballs();
