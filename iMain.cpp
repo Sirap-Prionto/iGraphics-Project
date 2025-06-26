@@ -19,8 +19,11 @@ staticBall all_static_balls[31][25];
 void draw_a_static_ball(staticBall aBall){
 
 
+
     iSetColor(aBall.red,aBall.green,aBall.blue);
     iFilledCircle(aBall.x,aBall.y,ball_radius);
+    iSetColor(255,255,255);
+    iFilledCircle(aBall.x-4,aBall.y+4,2);
 }
 
 void draw_all_static_ball()
@@ -233,7 +236,7 @@ void resetBall()
     throw_ball = 0;
     ball_x = 250;
     ball_y = 50;
-    color_counter++;
+    color_counter=rand();
     switch(color_counter%6){
         case 0: r = 255; g = 0; b = 0;break;
         case 1: r = 0; g = 255; b = 0;break;
@@ -260,6 +263,8 @@ void drawCannon() //---------------------working alright------------------------
     if(throw_ball==0){
         iSetColor(r,g,b);
         iFilledCircle(250,40, ball_radius);
+        iSetColor(255,255,255);
+        iFilledCircle(250-5,40+5,2);
     }
 }
 int combo = 0;
@@ -466,7 +471,8 @@ void drawBall()
 
     iSetColor(r,g,b);
     iFilledCircle(ball_x,ball_y, ball_radius);
-
+    iSetColor(255,255,255);
+    iFilledCircle(ball_x-5,ball_y+5,2);
     if(ball_x - ball_radius<0 || ball_x + ball_radius > width)
         dx = -dx;
 
@@ -485,6 +491,8 @@ void gameover(){
         }
     }
 }
+
+
 
 /*
 function iDraw() is called again and again by the system.
