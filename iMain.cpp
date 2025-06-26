@@ -266,6 +266,15 @@ void drawCannon() //---------------------working alright------------------------
         iSetColor(255,255,255);
         iFilledCircle(250-5,40+5,2);
     }
+    iSetColor(r,g,b);
+    iFilledCircle(252+ball_diameter,40, ball_radius);
+    iSetColor(255,255,255);
+    iFilledCircle(252+ball_diameter-5,40+5,2);
+    iSetColor(r,g,b);
+    iFilledCircle(254+ball_diameter*2,40, ball_radius);
+    iSetColor(255,255,255);
+    iFilledCircle(254+ball_diameter*2-5,40+5,2);
+
 }
 int combo = 0;
 void check_neighbour(int i,int j){
