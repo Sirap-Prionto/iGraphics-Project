@@ -58,7 +58,39 @@ void set_static_ball(int red,int green,int blue,int i,int j){
 }
 
 
+void all_ball_down()
+{
+    for(int i=30;i>0;i--){
+        for(int j=0;j<25;j++){
+            all_static_balls[i][j] = all_static_balls[i-1][j];
+        }
+    }
+    for(int j=0;j<25;j++){
+        all_static_balls[0][j] = emptyBall;
+    }
+    set_coordinates();
+}
+void all_ball_up()
+{
+    int flag = 1;
+    for(int j=0;j<25;j++){
+        if(all_static_balls[0][j].exist){
+            flag = 0;
+        }
+    }
+    if(flag){
+    for(int j=0;j<25;j++){
+        all_static_balls[30][j] = emptyBall;
+    }
+    for(int i=0;i<30;i++){
+        for(int j=0;j<25;j++){
+            all_static_balls[i][j] = all_static_balls[i+1][j];
+        }
+    }
 
+    set_coordinates();
+    }
+}
 void fillwithballs(){
 
     for(int i=0;i<5;i++){
@@ -91,7 +123,7 @@ void fillwithballs(){
 
 void noballs()
 {
-    for(int i = 0;i<30;i++){
+    for(int i = 0;i<31;i++){
         for(int j=0;j<25;j++){
             all_static_balls[i][j] = emptyBall;
         }
@@ -199,7 +231,9 @@ void fillwithdiamond()
         set_static_ball(255,0,0,6+i,12+i+7);
         set_static_ball(255,0,0,6+i,12-i-7);
     }
-
+    for(int i=0;i<5;i++){
+        all_ball_up();
+    }
 }
 
 
@@ -219,16 +253,24 @@ double ball_y = 50;
 int throw_ball = 0;
 double dx;
 double dy;
-double velocity = 1;
+double velocity = 3;
 int color_counter = 0;
 int r = 255;
 int g = 0;
 int b = 0;
+int r2 = 0;
+int g2 = 255;
+int b2 = 0;
+int r3 = 0;
+int g3 = 0;
+int b3 = 255;
+int moves = 0;
 void setBall()
 {
     throw_ball = 1;
     dx = velocity*sin(angle * 3.1416/180);
     dy = velocity*cos(angle * 3.1416/180);
+    moves++;
 }
 
 void resetBall()
@@ -237,13 +279,19 @@ void resetBall()
     ball_x = 250;
     ball_y = 50;
     color_counter=rand();
+    r = r2;
+    g = g2;
+    b = b2;
+    r2 = r3;
+    g2 = g3;
+    b2 = b3;
     switch(color_counter%6){
-        case 0: r = 255; g = 0; b = 0;break;
-        case 1: r = 0; g = 255; b = 0;break;
-        case 2: r = 0; g = 0; b = 255;break;
-        case 3: r = 0; g = 255; b = 255;break;
-        case 4: r = 255; g = 0; b = 255;break;
-        case 5: r = 255; g = 255; b = 0;break;
+        case 0: r3 = 255; g3 = 0; b3 = 0;break;
+        case 1: r3 = 0; g3 = 255; b3 = 0;break;
+        case 2: r3 = 0; g3 = 0; b3 = 255;break;
+        case 3: r3 = 0; g3 = 255; b3 = 255;break;
+        case 4: r3 = 255; g3 = 0; b3 = 255;break;
+        case 5: r3 = 255; g3 = 255; b3 = 0;break;
 
     }
 }
@@ -266,11 +314,11 @@ void drawCannon() //---------------------working alright------------------------
         iSetColor(255,255,255);
         iFilledCircle(250-5,40+5,2);
     }
-    iSetColor(r,g,b);
+    iSetColor(r2,g2,b2);
     iFilledCircle(252+ball_diameter,40, ball_radius);
     iSetColor(255,255,255);
     iFilledCircle(252+ball_diameter-5,40+5,2);
-    iSetColor(r,g,b);
+    iSetColor(r3,g3,b3);
     iFilledCircle(254+ball_diameter*2,40, ball_radius);
     iSetColor(255,255,255);
     iFilledCircle(254+ball_diameter*2-5,40+5,2);
@@ -300,7 +348,7 @@ void check_neighbour(int i,int j){
         check_neighbour(i,j+1);
         }
     }
-    ///*
+    // /*
     if (i!=0 && j!=0 && all_static_balls[i-1][j-1].exist){
         if (r==all_static_balls[i-1][j-1].red && g==all_static_balls[i-1][j-1].green && b==all_static_balls[i-1][j-1].blue){
         check_neighbour(i-1,j-1);
@@ -356,7 +404,7 @@ void check_collision(int i, int j){
     }
     if(ball_y + ball_radius > height) startchecking = 1;
     //checking around i,j
-    if(startchecking){
+    if(startchecking && throw_ball){
     if (i!=0 && all_static_balls[i-1][j].exist){
         if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
         combo++;
@@ -385,7 +433,7 @@ void check_collision(int i, int j){
         all_static_balls[i][j+1].exist=1;
         }
     }
-    ///*
+    // /*
     if (i!=0 && j!=0 && all_static_balls[i-1][j-1].exist){
         if (r==all_static_balls[i-1][j-1].red && g==all_static_balls[i-1][j-1].green && b==all_static_balls[i-1][j-1].blue){
         combo++;
@@ -424,7 +472,7 @@ void check_collision(int i, int j){
         all_static_balls[i][j].green=g;
         all_static_balls[i][j].blue=b;
     }
-    else{
+    else if(throw_ball){
         if (all_static_balls[i-1][j].exist){
             if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
                 all_static_balls[i-1][j].exist=0;
@@ -446,7 +494,7 @@ void check_collision(int i, int j){
                 all_static_balls[i][j+1].exist=0;
             }
         }
-        ///*
+        // /*
         if (i!=0 && j!=0 && all_static_balls[i-1][j-1].exist){
             if (r==all_static_balls[i-1][j-1].red && g==all_static_balls[i-1][j-1].green && b==all_static_balls[i-1][j-1].blue){
             all_static_balls[i-1][j-1].exist=0;
@@ -493,6 +541,8 @@ void drawBall()
 
 }
 //----------------------game over function --------------------------------------
+
+
 void gameover(){
     for(int j = 0;j<25;j++){
         if(all_static_balls[30][j].exist){
@@ -527,6 +577,11 @@ void iDraw()
 
     if(throw_ball)
         drawBall();
+
+    if(moves == 4){
+        all_ball_down();
+        moves=0;
+    }
 
     char cmb[12];
     sprintf(cmb,"COMBO: %i",(combo>=2)?combo:0);
@@ -606,6 +661,7 @@ void iKeyboard(unsigned char key)
     case 'f':
         //fillwithballs();
         //fillwithdiamond();
+        all_ball_down();
         break;
     case '0':
         noballs();
