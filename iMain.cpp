@@ -48,11 +48,23 @@ void set_coordinates(){
         }
     }
 }
-void set_static_ball(int red,int green,int blue,int i,int j){
+void set_static_ball(int color_code,int i,int j){
+    //color code 0=red, 1=green,2=blue,3=cyan,4=magenta,5=yellow,6=white
+    int r,g,b;
+    r=g=b=0;
+    switch(color_code){
+        case 0: r=255;break;
+        case 1: g=255;break;
+        case 2: b=255;break;
+        case 3: g=255;b=255;break;
+        case 4: r=255;b=255;break;
+        case 5: r=255;g=255;break;
+        case 6: r=255;g=255;b=255;break;
+    }
     all_static_balls[i][j].exist = 1;
-    all_static_balls[i][j].red = red;
-    all_static_balls[i][j].green = green;
-    all_static_balls[i][j].blue = blue;
+    all_static_balls[i][j].red = r;
+    all_static_balls[i][j].green = g;
+    all_static_balls[i][j].blue = b;
     all_static_balls[i][j].x = (2*j+1)*ball_radius;
     all_static_balls[i][j].y = height - (2*i+1)*ball_radius;
 }
@@ -117,7 +129,7 @@ void fillwithballs(){
         }
     }
     set_coordinates();
-    set_static_ball(255,255,0,20,20);
+    set_static_ball(6,20,20);
 }
 //void loweringstaticball(){ball.x;ball.y++} --------time mode er gameplay er jonno-----------
 
@@ -134,106 +146,20 @@ void fillwithdiamond()
 {
     noballs();
     set_coordinates();
-    for(int i=0;i<11;i++){
-
-        set_static_ball(255,0,0,i+9,i+2);
-        set_static_ball(255,0,0,i+9,-i+2+20);
-
-    }
-    for(int i=0;i<10;i++){
-
-        set_static_ball(0,255,0,i+9,i+3);
-        set_static_ball(0,255,0,i+9,-i+3+18);
-
-    }
-    for(int i=0;i<9;i++){
-
-        set_static_ball(0,0,255,i+9,i+4);
-        set_static_ball(0,0,255,i+9,-i+4+16);
-
-    }
-    for(int i=0;i<8;i++){
-
-        set_static_ball(0,255,255,i+9,i+5);
-        set_static_ball(0,255,255,i+9,-i+5+14);
-
-    }
-    for(int i=0;i<7;i++){
-
-        set_static_ball(0,0,255,i+9,i+6);
-        set_static_ball(0,0,255,i+9,-i+6+12);
-
-    }
-    for(int i=0;i<6;i++){
-
-        set_static_ball(0,255,0,i+9,i+7);
-        set_static_ball(0,255,0,i+9,-i+7+10);
-
-    }
     for(int i=0;i<5;i++){
-
-        set_static_ball(255,0,255,i+9,i+8);
-        set_static_ball(255,0,255,i+9,-i+8+8);
-
-    }
-    for(int i=0;i<4;i++){
-
-        set_static_ball(255,255,0,i+9,i+9);
-        set_static_ball(255,255,0,i+9,-i+9+6);
+        for(int j=0;j<=i;j++){
+            set_static_ball(rand()%6,i+2,j+13);
+            set_static_ball(rand()%6,i+2,11-j);
+            set_static_ball(rand()%6,12-i,11-j);
+            set_static_ball(rand()%6,12-i,j+13);
+        }
 
     }
-    for(int i=0;i<3;i++){
+    for(int i=1;i<14;i++){
+        set_static_ball(rand()%6,i,12);
+        set_static_ball(rand()%6,7,i+5);
+    }
 
-        set_static_ball(0,255,255,i+9,i+10);
-        set_static_ball(0,255,255,i+9,-i+10+4);
-
-    }
-    for(int i=0;i<2;i++){
-
-        set_static_ball(255,0,0,i+9,i+11);
-        set_static_ball(255,0,0,i+9,-i+11+2);
-
-    }
-    set_static_ball(0,255,0,9,12);
-    set_static_ball(255,0,0,8,12);
-    set_static_ball(0,255,255,8,11);
-    set_static_ball(0,255,255,8,13);
-    set_static_ball(0,255,255,7,12);
-    for(int i=0;i<3;i++){
-        set_static_ball(255,255,0,6+i,12+i);
-        set_static_ball(255,255,0,6+i,12-i);
-    }
-    for(int i=0;i<3;i++){
-        set_static_ball(255,0,255,6+i,12+i+1);
-        set_static_ball(255,0,255,6+i,12-i-1);
-    }
-    for(int i=0;i<3;i++){
-        set_static_ball(0,255,0,6+i,12+i+2);
-        set_static_ball(0,255,0,6+i,12-i-2);
-    }
-    for(int i=0;i<3;i++){
-        set_static_ball(0,0,255,6+i,12+i+3);
-        set_static_ball(0,0,255,6+i,12-i-3);
-    }
-    for(int i=0;i<3;i++){
-        set_static_ball(0,255,255,6+i,12+i+4);
-        set_static_ball(0,255,255,6+i,12-i-4);
-    }
-    for(int i=0;i<3;i++){
-        set_static_ball(0,0,255,6+i,12+i+5);
-        set_static_ball(0,0,255,6+i,12-i-5);
-    }
-    for(int i=0;i<3;i++){
-        set_static_ball(0,255,0,6+i,12+i+6);
-        set_static_ball(0,255,0,6+i,12-i-6);
-    }
-    for(int i=0;i<3;i++){
-        set_static_ball(255,0,0,6+i,12+i+7);
-        set_static_ball(255,0,0,6+i,12-i-7);
-    }
-    for(int i=0;i<5;i++){
-        all_ball_up();
-    }
 }
 
 
