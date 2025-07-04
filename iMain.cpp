@@ -18,8 +18,6 @@ staticBall all_static_balls[31][25];
 
 void draw_a_static_ball(staticBall aBall){
 
-
-
     iSetColor(aBall.red,aBall.green,aBall.blue);
     iFilledCircle(aBall.x,aBall.y,ball_radius);
     iSetColor(255,255,255);
@@ -161,7 +159,13 @@ void fillwithdiamond()
     }
 
 }
+void fillwitheart()
+{
+    noballs();
+    set_coordinates();
 
+
+}
 
 
 void drawAxis()
@@ -198,7 +202,7 @@ void setBall()
     dy = velocity*cos(angle * 3.1416/180);
     moves++;
 }
-
+int combo = 0;
 void resetBall()
 {
     throw_ball = 0;
@@ -220,6 +224,13 @@ void resetBall()
         case 5: r3 = 255; g3 = 255; b3 = 0;break;
 
     }
+    if(combo>=6){
+        r=g=b=63;
+    }
+    else if(combo>=4){
+        r=g=b=255;
+    }
+
 }
 
 
@@ -250,7 +261,6 @@ void drawCannon() //---------------------working alright------------------------
     iFilledCircle(254+ball_diameter*2-5,40+5,2);
 
 }
-int combo = 0;
 void check_neighbour(int i,int j){
     combo++;
     all_static_balls[i][j].exist=0;
@@ -301,6 +311,12 @@ void check_neighbour(int i,int j){
 void check_collision(int i, int j){
     int startchecking = 0;
     if (all_static_balls[i][j].exist){
+        if(r==255 && g==255 && b==255){
+            r=all_static_balls[i][j].red;
+            g=all_static_balls[i][j].green;
+            b=all_static_balls[i][j].blue;
+        }
+
         if(all_static_balls[i+1][j].exist==0){
             i = i+1;
             j = j;
@@ -328,7 +344,29 @@ void check_collision(int i, int j){
         }
         startchecking = 1;
     }
-    if(ball_y + ball_radius > height) startchecking = 1;
+    if(ball_y + ball_radius > height){
+        startchecking = 1;
+        if(r==255 && g==255 && b==255){
+            startchecking = 0;
+            resetBall();
+        }
+    }
+
+    //for bomb
+    if(r==63 && g==63 && b==63 && startchecking && throw_ball){
+        startchecking = 0;
+        for(int I=-3;I<=2;I++){
+            for(int J=-2;J<=2;J++){
+                if((I+i)>=0 && (I+i)<30 && (J+j)>=0 && (J+j)<=24) all_static_balls[i+I][j+J].exist=0;
+            }
+        }
+        resetBall();
+    }
+
+
+
+
+
     //checking around i,j
     if(startchecking && throw_ball){
     if (i!=0 && all_static_balls[i-1][j].exist){
@@ -452,10 +490,13 @@ void check_collision(int i, int j){
 void drawBall()
 {
 
+
+
     iSetColor(r,g,b);
     iFilledCircle(ball_x,ball_y, ball_radius);
     iSetColor(255,255,255);
     iFilledCircle(ball_x-5,ball_y+5,2);
+
     if(ball_x - ball_radius<0 || ball_x + ball_radius > width)
         dx = -dx;
 
