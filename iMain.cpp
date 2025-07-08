@@ -7,6 +7,7 @@ using namespace std;
 function iDraw() is called again and again by the system.
 */
 int ch=-1;
+Image sc3;
 int click;
 int screenCount =0,screen=1, option_screen=0;
 int volume =1;
@@ -27,8 +28,23 @@ char playerName[30] ="";
 int nameLength =0;
 bool showCursor =true;
 bool showWarning =false;
+int mode=0;
 void toggleCursor(){
     showCursor=!showCursor;
+}
+int getCharWidth(char c) {
+    if (c == 'i' || c == 'l' || c == 'I') return 7;
+    if (c == 'W' || c == 'M') return 18;
+    if (c == ' ') return 6;
+    return 14;
+}
+
+int getTextWidth(const char* text) {
+    int width = 0;
+    for (int i = 0; text[i]; i++) {
+        width += getCharWidth(text[i]);
+    }
+    return width;
 }
 
 typedef struct{
@@ -691,62 +707,48 @@ void iDraw()
                 
             }
         }
-        else if(screen ==3)
-        {
+        else if(screen ==3) {
             iClear();
-            iShowImage(-110, -120, "assets/images/screen3_Copy.jpg");
+            in_menu=1, in_game=0;
+            iShowLoadedImage(-110, -120, &sc3);
+            in_menu=1, in_game=0;
+            iSetColor(77, 34, 29);
+            iFilledCircle(389, 423, 16);
+            iSetColor(255, 0, 0);
+            iFilledCircle(389, 423, 15);
+            iSetColor(255, 255, 255);
+            iTextBold(383, 416, "X", GLUT_BITMAP_HELVETICA_18);
+            iSetColor(44, 44, 84);
             char displayName[60];
-            sprintf(displayName, "%s%s", playerName, (showCursor ? "_" : " "));
-            iTextBold(143, 472, displayName, GLUT_BITMAP_TIMES_ROMAN_24);
-
+            int nameX = 137;
+            int nameY = 333;
+            iSetColor(0,0,0); 
+            iTextBold(nameX, nameY, playerName, GLUT_BITMAP_TIMES_ROMAN_24);
+            static int pulse = 0;
+            static bool increasing = true;
+            if (increasing) {
+                pulse += 3;
+                if (pulse >= 255) increasing = false;
+            } else {
+                pulse -= 3;
+                if (pulse <= 120) increasing = true;
+            }
+            if (showCursor) {
+                int nameWidth = getTextWidth(playerName);
+                iSetColor(pulse, pulse, pulse);
+                iTextBold(nameX + nameWidth, nameY, "_", GLUT_BITMAP_TIMES_ROMAN_24);
+            }
             if(showWarning) {
                 iSetColor(200, 50, 50);
-                iText(143, 442, "Only A-Z, a-z, 0-9, and _ allowed!", GLUT_BITMAP_HELVETICA_12);
-            }
-            iSetColor(54, 37, 21);
-            curv_border(94, 158, 150, 40, 15);
-            curv_border(94, 110, 150, 40, 15);
-            curv_border(260, 158, 150, 40, 15);
-            curv_border(260, 110, 150, 40, 15);
-            iSetColor(173, 164, 127);
-            curv(94, 158, 150, 40, 15);
-            curv(94, 110, 150, 40, 15);
-            curv(260, 158, 150, 40, 15);
-            curv(260, 110, 150, 40, 15);
-            iSetColor(56, 45, 32);
-            iTextBold(100, 165, "Box", GLUT_BITMAP_HELVETICA_18);
-            iTextBold(280, 165, "Diamond", GLUT_BITMAP_HELVETICA_18);
-            iTextBold(100, 123, "Pyramid", GLUT_BITMAP_HELVETICA_18);
-            iTextBold(280, 123, "Random", GLUT_BITMAP_HELVETICA_18);
+                iText(128, 313, "Only A-Z, a-z, 0-9, and _ allowed!", GLUT_BITMAP_HELVETICA_12);
+            }        
+        }            
+        else if(screen==4){
+            iClear();
+            iShowImage(-110, -120, "assets/images/screen4.jpeg");
+            in_menu=1, in_game=0;
+            
         }
-        // else if(screen ==4) {
-        //     iClear();
-        //     iSetColor(240, 234, 214);
-        //     iFilledRectangle(0, 0, width, height);
-
-        //     iSetColor(44, 44, 84);
-        //     iTextBold(180, 500, "Enter Your Name:", GLUT_BITMAP_TIMES_ROMAN_24);
-
-        //     char displayName[60];
-        //     sprintf(displayName, "%s%s", playerName, (showCursor ? "_" : ""));
-        //     static int pulse =0;
-        //     static bool increasing =true;
-        //     if (increasing) {
-        //         pulse +=3;
-        //         if (pulse >=255) increasing =false;
-        //     } else {
-        //         pulse -=3;
-        //         if (pulse <=120) increasing =true;
-        //     }
-        //     iSetColor(pulse, pulse, pulse);
-        //     iTextBold(140, 440, displayName, GLUT_BITMAP_TIMES_ROMAN_24);
-
-        //     if(showWarning) {
-        //         iSetColor(200, 50, 50);
-        //         iText(140, 400, "Only A-Z, a-z, 0-9, and _ allowed!", GLUT_BITMAP_HELVETICA_12);
-        //     }
-        // }
-
     }
     else if(screenCount ==3)
     {
@@ -1045,8 +1047,36 @@ void iMouse(int button, int state, int mx, int my)
                     screen=3;
                     updateMusic();
                 }
-            }                  
+            }     
             else if(screen==3){
+                if(mx >=128 && mx <=253 && my >=277 && my <=306){
+                    playerName[0] ='\0'; 
+                    screen=3;
+                    showWarning =false;
+                    updateMusic();
+                    iDraw();
+                }
+                else if(mx >=258 && mx <=379 && my >=278 && my <=308){
+                    if(playerName[0] =='\0'){
+                        showWarning =true;
+                        return;
+                    }
+                    else{
+                        showWarning =false;
+                        screen=4;
+                        shouldStartMuse =true;
+                        updateMusic();
+                    }
+                }
+                else if((mx-389)*(mx-389)+(my-423)*(my-423)<=256) 
+                {
+                    screenCount =1, screen=1; 
+                    in_game=0, in_menu=1;
+                    shouldStartMuse =true;
+                    updateMusic();
+                }
+            }
+            else if(screen==4){
                 if(mx >=150 && mx <=350 && my >=400 && my <=450) {
                     subModeSelect =2; 
                     fillwithdiamond();
@@ -1284,6 +1314,17 @@ GLUT_KEY_PAGE_UP, GLUT_KEY_PAGE_DOWN, GLUT_KEY_HOME, GLUT_KEY_END,
 GLUT_KEY_INSERT */
 void iSpecialKeyboard(unsigned char key)
 {
+    if (screenCount == 1 && screen == 2) {
+        if (key == GLUT_KEY_LEFT && angle > -80)
+            angle -= 2.5;
+        else if (key == GLUT_KEY_RIGHT && angle < 80)
+            angle += 2.5;
+        else if (key == GLUT_KEY_UP && throw_ball == 0) {
+            combo = 0;
+            setBall();
+        }
+    }
+
     switch (key)
     {
     case GLUT_KEY_END:
@@ -1308,7 +1349,8 @@ int main(int argc, char *argv[])
     game_muse=iPlaySound("assets/sounds/music_game.wav", true, 0);
     iPauseSound(game_muse);
     // iPauseSound(loadGameMus);
+    iLoadImage(&sc3,"assets/images/screen3.png");
     iInitialize(width, height, "Bouncy Bonanza");
-    iSetTimer(900, toggleCursor);
+    iSetTimer(500, toggleCursor);
     return 0;
 }
