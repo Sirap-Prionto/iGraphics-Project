@@ -17,7 +17,6 @@ staticBall all_static_balls[31][25];
 
 
 void draw_a_static_ball(staticBall aBall){
-
     iSetColor(aBall.red,aBall.green,aBall.blue);
     iFilledCircle(aBall.x,aBall.y,ball_radius);
     iSetColor(255,255,255);
@@ -34,7 +33,6 @@ void draw_all_static_ball()
         }
     }
 }
-//-------ball er co ordinate draw a static ball e thakbe-----------
 staticBall emptyBall;
 void set_coordinates(){
     for(int i = 0;i<31;i++){
@@ -129,7 +127,6 @@ void fillwithballs(){
     set_coordinates();
     set_static_ball(6,20,20);
 }
-//void loweringstaticball(){ball.x;ball.y++} --------time mode er gameplay er jonno-----------
 
 void noballs()
 {
@@ -159,11 +156,16 @@ void fillwithdiamond()
     }
 
 }
-void fillwitheart()
+void fillwithpyramid()
 {
     noballs();
     set_coordinates();
 
+    for(int i=0;i<25;i++){
+        for(int j=i;j<25-i;j++){
+            set_static_ball(rand()%6,i,j);
+        }
+    }
 
 }
 
@@ -176,8 +178,9 @@ void drawAxis()
 
 
 double angle = 0;
-
-
+double mouse_x = 0;
+double mouse_y = 5;
+double mouse_r;
 double ball_x = 250;
 double ball_y = 50;
 int throw_ball = 0;
@@ -198,8 +201,8 @@ int moves = 0;
 void setBall()
 {
     throw_ball = 1;
-    dx = velocity*sin(angle * 3.1416/180);
-    dy = velocity*cos(angle * 3.1416/180);
+    dx = velocity*mouse_x/mouse_r;
+    dy = velocity*mouse_y/mouse_r;
     moves++;
 }
 int combo = 0;
@@ -225,19 +228,23 @@ void resetBall()
 
     }
     if(combo>=6){
-        r=g=b=63;
+        r=g=b=127;
+    }
+    else if(combo>=5){
+        r=g=b=255;
     }
     else if(combo>=4){
-        r=g=b=255;
+        r=g=b=63;
     }
 
 }
 
 
-void drawCannon() //---------------------working alright-------------------------------
+
+void drawCannon()
 {
-    double cannon_x = 30*sin(angle * 3.1416/180);
-    double cannon_y = 30*cos(angle * 3.1416/180);
+    double cannon_x = 30*mouse_x/mouse_r;
+    double cannon_y = 30*mouse_y/mouse_r;
     iSetLineWidth(2);
     iSetColor(255,255,255);
     iLine(250-10,50,250+cannon_x-10,50+cannon_y);
@@ -310,13 +317,14 @@ void check_neighbour(int i,int j){
 
 void check_collision(int i, int j){
     int startchecking = 0;
+
     if (all_static_balls[i][j].exist){
         if(r==255 && g==255 && b==255){
             r=all_static_balls[i][j].red;
             g=all_static_balls[i][j].green;
             b=all_static_balls[i][j].blue;
         }
-
+        if(!((r==63 && g==63 && b==63)||(r==127 && g==127 && b==127))){
         if(all_static_balls[i+1][j].exist==0){
             i = i+1;
             j = j;
@@ -342,20 +350,31 @@ void check_collision(int i, int j){
                 j = j+1;
             }
         }
+
+    }
         startchecking = 1;
     }
     if(ball_y + ball_radius > height){
         startchecking = 1;
-        if(r==255 && g==255 && b==255){
+        if((r==255 && g==255 && b==255)||(r==127 && g==127 && b==127)){
             startchecking = 0;
             resetBall();
         }
     }
 
+    //for metal ball
+    if(r==127 && g==127 && b==127 && startchecking){
+        startchecking = 0;
+        all_static_balls[i][j].exist=0;
+        if((j-1)>=0) all_static_balls[i][j-1].exist=0;
+        if((j+1)<25) all_static_balls[i][j+1].exist=0;
+
+    }
+
     //for bomb
     if(r==63 && g==63 && b==63 && startchecking && throw_ball){
         startchecking = 0;
-        for(int I=-3;I<=2;I++){
+        for(int I=-2;I<=2;I++){
             for(int J=-2;J<=2;J++){
                 if((I+i)>=0 && (I+i)<30 && (J+j)>=0 && (J+j)<=24) all_static_balls[i+I][j+J].exist=0;
             }
@@ -565,6 +584,11 @@ function iMouseMove() is called when the user moves the mouse.
 void iMouseMove(int mx, int my)
 {
     // place your codes here
+    mouse_x = mx-250;
+    mouse_y = my-50;
+    if(mouse_y<=5) mouse_y=5;
+    mouse_r = sqrt(mouse_x*mouse_x+mouse_y*mouse_y);
+
 }
 
 /*
@@ -585,6 +609,9 @@ void iMouse(int button, int state, int mx, int my)
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
     {
         // place your codes here
+        if(throw_ball==0)
+            combo=0;
+            setBall();
     }
     if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
     {
@@ -638,6 +665,9 @@ void iKeyboard(unsigned char key)
         break;
     case '2':
         fillwithdiamond();
+        break;
+    case '3':
+        fillwithpyramid();
         break;
     // place your codes for other keys here
     default:
