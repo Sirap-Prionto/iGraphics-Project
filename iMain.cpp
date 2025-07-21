@@ -6,9 +6,26 @@ using namespace std;
 /*
 function iDraw() is called again and again by the system.
 */
-int ch=-1;
-Image sc3;
-int click;
+int totalTime=0;
+bool timeRushActive = false;
+int timeRushRound = 0;
+const int timeLimits[] = {420, 300, 180}; // 7m, 5m, 3m
+const int roundPatterns[] = {1, 2, 3};    // Box, Diamond, Pyramid
+int hoverSoundChannel = -1;
+bool hoverSoundPlaying = false;
+int ch=-1, submode_hover=0, mode_hover=0;
+double arrow_go_x[]={319, 319, 387};
+double arrow_go_x_1[]={319, 319, 386};
+double arrow_go_y[]={100, 35, 73};
+double arrow_go_y_1[]={99, 36, 73};
+double arrow_back_x[]={92, 160, 160};
+double arrow_back_x_1[]={93, 160, 160};
+double arrow_back_y[]={73, 35, 100};
+double arrow_back_y_1[]={73, 36, 99};
+bool hovered=0;
+int about_us=0, help=0, new_game=0, high_score=0, exit_game=0, settings=0, back=0, proceed=0, cross=0;
+Image sc3,sc4, sc1, sc2_1, sc2_2, sc2_3, newgame00;
+int click, showModeWarning=0, showSubModeWarning=0;
 int screenCount =0,screen=1, option_screen=0;
 int volume =1;
 int music_vol =1, musicPlaying=-1;
@@ -21,7 +38,6 @@ int targetVolume =40, currentVolume =0;
 bool fadingIn =false, fadingOut =false;
 int game_muse=-1, menu_muse=-1;
 int gameModeValue =0, subModeSelect =0;
-int totalTime =0;
 time_t gameStartTime =0;
 bool gameOverState =false;
 char playerName[30] ="";
@@ -29,6 +45,8 @@ int nameLength =0;
 bool showCursor =true;
 bool showWarning =false;
 int mode=0;
+time_t lastHoverSound = 0;
+
 void toggleCursor(){
     showCursor=!showCursor;
 }
@@ -147,7 +165,7 @@ void fillwithballs(){
         for(int j =0;j<25;j++){
             staticBall tempBall;
             tempBall.exist =1;
-            switch(c%6){
+            switch(rand()%6){
                 case 0:tempBall.red =255;tempBall.blue =0;tempBall.green =0;break;
                 case 1:tempBall.green =255;tempBall.red =0;tempBall.blue =0;break;
                 case 2:tempBall.blue =255;tempBall.red =0;tempBall.green =0;break;
@@ -240,7 +258,7 @@ double ball_y = 50;
 int throw_ball = 0;
 double dx;
 double dy;
-double velocity = 3;
+double velocity = 1;
 int color_counter = 0;
 int r = 255;
 int g = 0;
@@ -435,9 +453,6 @@ void check_collision(int i, int j){
     }
 
 
-
-
-
     //checking around i,j
     if(startchecking && throw_ball){
     if (i!=0 && all_static_balls[i-1][j].exist){
@@ -608,12 +623,12 @@ void curv_border(int x, int y, int w, int h, int r){
 }
 void updateMusic()
 {
-    if (music_vol ==0)
-    {
-        if (ch !=-1) iPauseSound(ch);
+    if (music_vol == 0) {
+        if (menu_muse != -1) iPauseSound(menu_muse);
+        if (game_muse != -1) iPauseSound(game_muse);
+        ch = -1;
         return;
     }
-
     bool wantGameMusic =(screenCount ==1 && screen ==2);
     int desiredHandle =wantGameMusic ? game_muse : menu_muse;
 
@@ -621,7 +636,8 @@ void updateMusic()
 
     if (ch !=-1 && ch !=desiredHandle)
         iPauseSound(ch); 
-
+    if (wantGameMusic && menu_muse != -1) iPauseSound(menu_muse);
+    if (!wantGameMusic && game_muse != -1) iPauseSound(game_muse);
     if (ch !=desiredHandle || musicPaused)
     {
         ch =desiredHandle;
@@ -633,9 +649,12 @@ void updateMusic()
         musicPaused =false;
     }
 }
-
-
-
+void fillwithpattern(int pattern) {
+    if (pattern == 1) fillwithballs();
+    else if (pattern == 2) fillwithdiamond();
+    else if (pattern == 3) fillwithpyramid();
+}
+Image bg_0, bg_3, bg_4, bg_7;
 void iDraw()
 {
     // place your drawing codes here
@@ -646,26 +665,57 @@ void iDraw()
         iClear();
         iSetColor(147, 213, 230); 
         iFilledRectangle(0, 0, 500, 650); 
-        iShowImage(-50, -30, "assets/images/bg_0.png"); 
-        iSetColor(42, 54, 53);
+        iShowLoadedImage(-50, -30, &newgame00); 
+        if(new_game==0) iSetColor(42, 54, 53);
+        else{
+            iSetColor(224, 209, 197);
+            curv_border(148, 412, 198, 48, 20);
+            iSetColor(61, 46, 33);
+            curv(149, 413, 194, 46, 20);
+            iSetColor(224, 209, 197);
+        }
         iTextBold(185, 428, "Play  Game", GLUT_BITMAP_TIMES_ROMAN_24);
-        iSetColor(42, 54, 53);
+        if(high_score==0) iSetColor(42, 54, 53);
+        else{
+            iSetColor(224, 209, 197);
+            curv_border(148, 342, 198, 48, 20);
+            iSetColor(61, 46, 33);
+            curv(149, 343, 194, 46, 20);
+            iSetColor(224, 209, 197);
+        }
         iTextBold(185, 358, "High-scores", GLUT_BITMAP_TIMES_ROMAN_24); 
-        iSetColor(42, 54, 53);
+        if(settings==0) iSetColor(42, 54, 53);
+        else{
+            iSetColor(224, 209, 197);
+            curv_border(147, 273, 197, 48, 20);
+            iSetColor(61, 46, 33);
+            curv(148, 274, 193, 46, 20);
+            iSetColor(224, 209, 197);
+        }
         iTextBold(206, 290, "Settings", GLUT_BITMAP_TIMES_ROMAN_24); 
-        iSetColor(42, 54, 53);
+        if(exit_game==0) iSetColor(42, 54, 53);
+        else {
+            iSetColor(224, 209, 197);
+            curv_border(148, 203, 198, 48, 20);
+            iSetColor(61, 46, 33);
+            curv(149, 204, 194, 46, 20);
+            iSetColor(224, 209, 197);
+        }
         iTextBold(220, 218, "Exit", GLUT_BITMAP_TIMES_ROMAN_24); 
         iSetColor(232, 167, 160);
         iFilledCircle(483, 634, 15);
-        iSetColor(255, 0, 0);
+        if(help==0) iSetColor(255, 0, 0);
+        else iSetColor(194, 174, 174);
         iFilledCircle(483, 634, 13);
         iSetColor(0,0,0);
         iTextBold(478, 626,"?", GLUT_BITMAP_TIMES_ROMAN_24);
         iSetColor(232, 167, 160);
         curv_border(420, 10, 70, 20, 10); 
-        iSetColor(24, 66, 35);
+        if(about_us==0) iSetColor(24, 66, 35);
+        else iSetColor(151, 184, 167);
         curv(420, 10, 70, 20, 10);
-        iSetColor(255, 255, 255);
+        if(about_us==0) iSetColor(255, 255, 255);
+        else iSetColor(22, 36, 29);
         iTextBold(429, 15, "About Us", GLUT_BITMAP_HELVETICA_12);
     }
     else if(screenCount ==1)
@@ -675,15 +725,36 @@ void iDraw()
         
         if(screen ==1)
         {
-            iShowImage(-110, -120, "assets/images/new_game_1.jpeg");
+            iShowLoadedImage(-110, -120, &sc1);
             in_menu=1, in_game=0;
             iSetColor(77, 34, 29);
             iFilledCircle(387, 420, 16);
-            iSetColor(255, 0, 0);
-            iFilledCircle(387, 420, 15);
-            iSetColor(255, 255, 255);
+            if(!cross){
+                iSetColor(255, 0, 0);
+                iFilledCircle(387, 420, 15);
+                iSetColor(255, 255, 255);
+            }
+            else{
+                iSetColor(194, 170, 167);
+                iFilledCircle(387, 420, 15);
+                iSetColor(31, 16, 14);
+            }
             iTextBold(381, 414, "X", GLUT_BITMAP_HELVETICA_18);
-            iSetColor(255, 255, 255);
+            iSetColor(139, 201, 198);
+            curv_border(98, 232, 138, 36, 13);
+            curv_border(241, 232, 138, 36, 13);
+            if(back==0) iSetColor(15, 31, 30);
+            else iSetColor(140, 171, 169);
+            curv(99, 233, 136, 34, 13);
+            if(proceed==0) iSetColor(15, 31, 30);
+            else iSetColor(140, 171, 169);
+            curv(242, 233, 136, 34, 13);
+            if(back==0) iSetColor(202, 224, 223);
+            else iSetColor(10, 26, 24);
+            iTextBold(118, 240, "NOVICE", GLUT_BITMAP_TIMES_ROMAN_24);
+            if(proceed==0) iSetColor(202, 224, 223);
+            else iSetColor(10, 26, 24);
+            iTextBold(257, 240, "VETERAN", GLUT_BITMAP_TIMES_ROMAN_24);
         }
         else if(screen ==2)
         {
@@ -719,6 +790,22 @@ void iDraw()
             drawAxis();
             draw_all_static_ball();
             int timeNow =(int)(time(0) - gameStartTime);
+            if (timeRushActive) {
+                int elapsed = time(0) - gameStartTime;
+                if (elapsed >= timeLimits[timeRushRound]) {
+                    timeRushRound++;
+                    if (timeRushRound >= 3) {
+                        // End Time Rush mode
+                        timeRushActive = false;
+                        screenCount = 5; // Go to Game Over screen
+                    } else {
+                        // Move to next round
+                        subModeSelect = roundPatterns[timeRushRound];
+                        fillwithpattern(subModeSelect);
+                        gameStartTime = time(0);
+                    }
+                }
+            }
             char timerStr[30];
             sprintf(timerStr, "Time: %02d:%02d", timeNow / 60, timeNow % 60);
             iSetColor(19, 38, 46);
@@ -753,17 +840,49 @@ void iDraw()
             iClear();
             in_menu=1, in_game=0;
             iShowLoadedImage(-110, -120, &sc3);
+            iSetColor(77, 34, 29);
+            curv_border(86, 212, 308, 210, 20);
+            iSetColor(232, 226, 183);
+            curv(87, 213, 306, 208, 20);
             in_menu=1, in_game=0;
             iSetColor(77, 34, 29);
-            iFilledCircle(389, 423, 16);
-            iSetColor(255, 0, 0);
-            iFilledCircle(389, 423, 15);
-            iSetColor(255, 255, 255);
-            iTextBold(383, 416, "X", GLUT_BITMAP_HELVETICA_18);
+            iFilledCircle(391, 421, 16);
+            if(!cross){
+                iSetColor(255, 0, 0);
+                iFilledCircle(391.5, 421.5, 15);
+                iSetColor(255, 255, 255);
+            }
+            else{
+                iSetColor(194, 170, 167);
+                iFilledCircle(391.5, 421.5, 15);
+                iSetColor(31, 16, 14);
+            }
+            iTextBold(385, 414, "X", GLUT_BITMAP_HELVETICA_18);
+            iSetColor(87, 77, 63);
+            curv_border(108, 229, 118, 40, 10);
+            curv_border(253, 229, 132, 40, 10);
+            if(back==0) iSetColor(148, 37, 30);
+            else iSetColor(207, 149, 140);
+            curv(108, 230, 116, 38, 10);
+            if(proceed==0) iSetColor(89, 150, 132);
+            else iSetColor(140, 219, 157);
+            curv(254, 230, 128, 38, 10);
+            if(back==1) iSetColor(46, 24, 21);
+            else iSetColor(201, 180, 163);
+            iTextBold(137, 240, "BACK", GLUT_BITMAP_TIMES_ROMAN_24);
+            if(proceed==0) iSetColor(211, 237, 236);
+            else iSetColor(24, 59, 57);
+            iTextBold(263, 240, "CONFIRM", GLUT_BITMAP_TIMES_ROMAN_24);
+            iSetColor(42, 54, 53);
+            curv_border(108, 290, 265, 40, 10);
+            iSetColor(197, 209, 208);
+            curv(108.5, 290.3, 264, 38.6, 10);
+            iSetColor(28, 20, 14);
+            iTextBold(130, 383, "What would you like to", GLUT_BITMAP_TIMES_ROMAN_24);
+            iTextBold(170, 353, "be known as?", GLUT_BITMAP_TIMES_ROMAN_24);
             iSetColor(44, 44, 84);
-            char displayName[60];
-            int nameX = 137;
-            int nameY = 333;
+            int nameX = 127;
+            int nameY = 304;
             iSetColor(0,0,0); 
             iTextBold(nameX, nameY, playerName, GLUT_BITMAP_TIMES_ROMAN_24);
             static int pulse = 0;
@@ -782,42 +901,95 @@ void iDraw()
             }
             if(showWarning) {
                 iSetColor(200, 50, 50);
-                iText(128, 313, "Only A-Z, a-z, 0-9, and _ allowed!", GLUT_BITMAP_HELVETICA_12);
+                iText(123, 283, "Only A-Z, a-z, 0-9, and _ allowed!", GLUT_BITMAP_HELVETICA_12);
             }        
         }            
         else if(screen==4){
             iClear();
-            iShowImage(-110, -120, "assets/images/screen4.jpeg");
+            iShowLoadedImage(-110, -120, &sc4);
             in_menu=1, in_game=0;
-            iSetTransparentColor(224, 217, 195, 0.05);
-            if(subModeSelect==1){
-                
-                curv(68, 207, 165, 44, 20);
-            }
-            else if(subModeSelect==2){
-                
-                curv(264, 207, 165, 44, 20);
-            }
-            else if(subModeSelect==3){
-                
-                curv(68, 124, 165, 44, 20);
-            }
-            else if(subModeSelect==4){
-                
-                curv(258, 130, 165, 44, 20);
-            }
+            iSetColor(219, 204, 147);
+            curv_border(257, 202, 165, 58, 13);//diamond
+            curv_border(252.6, 124, 169, 60, 13);//random
+            curv_border(70, 121, 160, 58, 13);//pyramid
+            curv_border(68.5, 201, 165, 56, 13);//box
+            if(subModeSelect==2 || submode_hover==2) iSetColor(219, 204, 147);//diamond
+            else iSetColor(77, 34, 29);
+            curv(259, 203.5, 161, 55, 13);
+            if(subModeSelect==1 || submode_hover==1) iSetColor(219, 204, 147);//box
+            else iSetColor(77, 34, 29);
+            curv(69.5, 202, 163, 54, 13);
+            if(subModeSelect==3 || submode_hover==3) iSetColor(219, 204, 147);//pyramid
+            else iSetColor(77, 34, 29);
+            curv(71.5, 122.5, 157, 55, 13);
+            if(subModeSelect==4 || submode_hover==4) iSetColor(219, 204, 147);//random
+            else iSetColor(77, 34, 29);
+            curv(254, 125, 165, 56, 13);
+            if(subModeSelect==2  || submode_hover==2) iSetColor(26, 38, 37);
+            else iSetColor(212, 205, 186);
+            iTextBold(293, 222, "Diamond", GLUT_BITMAP_TIMES_ROMAN_24);
+            if(subModeSelect==1 || submode_hover==1) iSetColor(26, 38, 37);
+            else iSetColor(212, 205, 186);
+            iTextBold(125, 222, "Box", GLUT_BITMAP_TIMES_ROMAN_24);
+            if(subModeSelect==3 || submode_hover==3) iSetColor(26, 38, 37);
+            else iSetColor(212, 205, 186);
+            iTextBold(108, 142, "Pyramid", GLUT_BITMAP_TIMES_ROMAN_24);
+            if(subModeSelect==4 || submode_hover==4) iSetColor(26, 38, 37);
+            else iSetColor(212, 205, 186);
+            iTextBold(293, 142, "Random", GLUT_BITMAP_TIMES_ROMAN_24);
+            iSetColor(180, 209, 207);
+            curv_border(107, 410, 265, 47, 15);
+            curv_border(107, 342, 265, 47, 15);
+            if(mode_hover==1 || gameModeValue==1) iSetColor(132, 179, 175);
+            else iSetColor(16, 28, 27);
+            curv(108, 411, 263, 45, 15);
+            if(mode_hover==2 || gameModeValue==2) iSetColor(132, 179, 175);
+            else iSetColor(16, 28, 27);
+            curv(108, 343, 263, 45, 15);
+            if(mode_hover==1 || gameModeValue==1) iSetColor(16, 28, 27);
+            else iSetColor(132, 179, 175);
+            iTextBold(165, 423, "TIME RUSH", GLUT_BITMAP_TIMES_ROMAN_24);
+            if(mode_hover==2 || gameModeValue==2) iSetColor(16, 28, 27);
+            else iSetColor(132, 179, 175);
+            iTextBold(160, 355, "SPACE BLAST", GLUT_BITMAP_TIMES_ROMAN_24);
+            iSetColor(232, 226, 183);
+            iFilledRectangle(244, 51, 77, 38);
+            iFilledRectangle(158, 51, 77, 38);
+            iFilledPolygon(arrow_go_x, arrow_go_y, 3);
+            iFilledPolygon(arrow_back_x, arrow_back_y, 3);
+            if(proceed==0) iSetColor(77, 34, 29);
+            else iSetColor(232, 226, 183);
+            iFilledRectangle(245, 52, 75, 36);
+            iFilledPolygon(arrow_go_x_1, arrow_go_y_1, 3);
+            if(back==0) iSetColor(77, 34, 29);
+            else iSetColor(232, 226, 183);
+            iFilledRectangle(159, 52, 75, 36);     
+            iFilledPolygon(arrow_back_x_1, arrow_back_y_1, 3);
+            if(proceed==0) iSetColor(232, 226, 183);
+            else iSetColor(77, 34, 29);
+            iTextBold(274, 63.3, "GO", GLUT_BITMAP_TIMES_ROMAN_24);
+            if(back==0) iSetColor(232, 226, 183);
+            else iSetColor(77, 34, 29);
+            iTextBold(156, 63.3, "BACK", GLUT_BITMAP_TIMES_ROMAN_24);
         }
     }
     else if(screenCount ==3)
     {
         // Code for the fourth screen,  settings screen
         iClear();
-        iShowImage(-50, -30, "assets/images/bg_3.png");
+        iShowLoadedImage(-50, -30, &bg_3);
         iSetColor(77, 34, 29);
         iFilledCircle(406, 435, 16);
-        iSetColor(255, 0, 0);
-        iFilledCircle(406, 435, 15);
-        iSetColor(255, 255, 255);
+        if(!cross){
+            iSetColor(255, 0, 0);
+            iFilledCircle(406, 435, 15);
+            iSetColor(255, 255, 255);
+        }
+        else{
+            iSetColor(176, 147, 144);
+            iFilledCircle(406, 435, 15);
+            iSetColor(255, 255, 255);
+        }
         iTextBold(400, 429, "X", GLUT_BITMAP_HELVETICA_18); 
         iSetColor(55, 74, 66);
         curv_border(232, 357, 166, 40, 14);
@@ -894,12 +1066,19 @@ void iDraw()
     {
         // Code for the fifth screen,  exit confirmation screen
         iClear();
-        iShowImage(-50, -30, "assets/images/bg_4.png");
+        iShowLoadedImage(-50, -30, &bg_4);
         iSetColor(147, 213, 230);
         iFilledCircle(404, 400, 19);
-        iSetColor(255, 0, 0);
-        iFilledCircle(404, 400, 17.5);
-        iSetColor(255, 255, 255);
+        if(!cross){
+            iSetColor(255, 0, 0);
+            iFilledCircle(404, 400, 17.5);
+            iSetColor(255, 255, 255);
+        }
+        else{
+            iSetColor(176, 147, 144);
+            iFilledCircle(404, 400, 17.5);
+            iSetColor(31, 16, 14);
+        }
         iTextBold(398, 395.2, "X", GLUT_BITMAP_HELVETICA_18);
     }
     else if(screenCount ==5)
@@ -933,7 +1112,7 @@ void iDraw()
     {
         // Code for the eighth screen,  help screen
         iClear();
-        iShowImage(-50, -30, "assets/images/bg_7.png");
+        iShowLoadedImage(-50, -30, &bg_7);
         iSetTransparentColor(147, 213, 230, 0.5);
         iFilledRectangle(0, 0, 500, 650); 
         iSetColor(204, 163, 131);
@@ -942,9 +1121,16 @@ void iDraw()
         curv(30, 205, 433, 281, 10); 
         iSetColor(77, 34, 29);
         iFilledCircle(460, 484, 16); 
-        iSetColor(255, 0, 0);
-        iFilledCircle(460, 484, 15);
-        iSetColor(255, 255, 255);
+        if(!cross){
+            iSetColor(255, 0, 0);
+            iFilledCircle(460, 484, 15);
+            iSetColor(255, 255, 255);
+        }
+        else{
+            iSetColor(176, 147, 144);
+            iFilledCircle(460, 484, 15);
+            iSetColor(31, 16, 14);
+        }
         iTextBold(453.8, 478, "X", GLUT_BITMAP_HELVETICA_18);
         iSetColor(157, 177, 224);
         curv_border(41, 219.5, 412, 201, 10);
@@ -966,7 +1152,7 @@ void iDraw()
     }
     else if(screenCount ==8){
         iClear();
-        iShowImage(-50, -30, "assets/images/bg_7.png");
+        iShowLoadedImage(-50, -30, &bg_7);
         iSetTransparentColor(147, 213, 230, 0.5);
         iFilledRectangle(0, 0, 500, 650); 
         iSetColor(32, 59, 97);
@@ -975,9 +1161,16 @@ void iDraw()
         curv(30, 185, 433, 321, 10);
         iSetColor(77, 34, 29);
         iFilledCircle(460, 504, 16);
-        iSetColor(255, 0, 0);
-        iFilledCircle(460, 504, 15);
-        iSetColor(255, 255, 255);
+        if(!cross){
+            iSetColor(255, 0, 0);
+            iFilledCircle(460, 504, 15);
+            iSetColor(255, 255, 255);
+        }
+        else{
+            iSetColor(176, 147, 144);
+            iFilledCircle(460, 504, 15);
+            iSetColor(31, 16, 14);
+        }
         iTextBold(453.8, 498, "X", GLUT_BITMAP_HELVETICA_18);
         iSetColor(245, 207, 169);
         curv_border(182, 490, 130, 40, 10);
@@ -1028,7 +1221,13 @@ void iDraw()
         if (ch !=-1)
             iSetVolume(ch, currentVolume);
     }
-
+    static time_t lastHoverSound = 0;
+    if (hovered && difftime(time(0), lastHoverSound) >= 0.2) {
+        iPlaySound("assets/sounds/click.wav", false, 10);
+        lastHoverSound = time(0);
+    }
+    hovered = false;
+    if(!(screenCount==1 && screen==3)) playerName[0] = '\0'; // Clear playerName if not in screen 1 and screen 3
 }
 
 /*
@@ -1038,11 +1237,158 @@ function iMouseMove() is called when the user moves the mouse.
 void iMouseMove(int mx, int my)
 {
     // place your codes here
-    mouse_x = mx-250;
-    mouse_y = my-50;
-    if(mouse_y<=5) mouse_y=5;
-    mouse_r = sqrt(mouse_x*mouse_x+mouse_y*mouse_y);
-    if(mouse_r>ball_radius) mouse_r = ball_radius;
+    if(screenCount==1 && screen==2){
+        mouse_x = mx-250;
+        mouse_y = my-50;
+        if(mouse_y<=5) mouse_y=5;
+        mouse_r = sqrt(mouse_x*mouse_x+mouse_y*mouse_y);
+        if(mouse_r>ball_radius) mouse_r = ball_radius;
+    }
+    else if(screenCount==1){
+        if(screen==1){
+            if((mx-387)*(mx-387)+(my-420)*(my-420)<=256) 
+            {
+                cross =1;
+                hovered = true;
+            }
+            else cross =0;
+            if(mx>=98 && mx<=236 && my>=232 && my<=268) 
+            {
+                back =1;
+                hovered = true;
+            }
+            else back =0;
+            if(mx>=254 && mx<=392 && my>=232 && my<=268) 
+            {
+                proceed =1;
+                hovered = true;
+            }
+            else proceed =0;
+        }
+        if(screen==4){
+            if(mx >=264 && mx <=433 && my >=207 && my <=255) {
+                submode_hover =2; 
+            }
+            else if(mx >=68 && mx <=234 && my >=207 && my <=253) {
+                submode_hover =1; 
+            }
+            else if(mx >=71 && mx <=229 && my >=127 && my <=175) {
+                submode_hover =3; 
+            }
+            else if(mx >=254 && mx <=410 && my >=127 && my <=173) {
+                submode_hover =4; 
+            }
+            else submode_hover =0;
+            if(mx >=110 && mx <=369 && my >=413 && my <=454) {
+                mode_hover =1; 
+            }
+            else if(mx >=110 && mx <=369 && my >=345 && my <=386) {
+                mode_hover =2; 
+            }
+            else mode_hover =0;
+            if(mx >=245 && mx <=355 && my >=52 && my <=82) {
+                proceed =1; 
+                hovered = true;
+            }
+            else proceed =0;
+            if(mx >=122 && mx <=232 && my >=52 && my <=82) {
+                back =1; 
+                hovered = true;
+            }
+            else back =0;
+        }
+        if(screen==3){
+            if((mx-387)*(mx-387)+(my-420)*(my-420)<=256) 
+            {
+                cross =1;
+                hovered = true;
+            }
+            else cross =0;
+            if(mx>=254 && mx<=392 && my>=230 && my<=268) 
+            {
+                proceed =1;
+                hovered = true;
+            }
+            else proceed =0;
+            if(mx>=108 && mx<=226 && my>=232 && my<=368) 
+            {
+                back =1;
+                hovered = true;
+            }
+            else back =0;
+        }
+    }
+    else if(screenCount==0){
+        if(mx>=420 && mx<=490 && my>=10 && my<=30){
+            about_us = 1;
+            hovered = true;
+        }
+        else{
+            about_us = 0;
+        }
+        if((mx-483)*(mx-483)+(my-634)*(my-634)<=225){
+            help = 1;
+            hovered = true;
+        }
+        else{
+            help = 0;
+        }
+        if(mx>=153 && mx<=339 && my>=202 && my<=248){
+            exit_game=1;
+            hovered = true;
+        }
+        else exit_game=0;
+        if(mx>=153 && mx<=339 && my>=414 && my<=460){
+            new_game=1;
+            hovered = true;
+        }
+        else new_game=0;
+        if(mx>=153 && mx<=339 && my>=345 && my<=391){
+            high_score=1;
+            hovered = true;
+        }
+        else high_score=0;
+        if(mx>=155 && mx<=333 && my>=274 && my<=324){
+            settings=1;
+            hovered = true;
+        }
+        else settings=0;
+    }
+    else if(screenCount==8){
+        if((mx-460)*(mx-460)+(my-504)*(my-504)<=225) 
+        {
+            cross =1;
+            hovered = true;
+        }
+        else cross =0;
+    }
+    else if(screenCount==7)
+    {
+        if((mx-460)*(mx-460)+(my-484)*(my-484)<=225)
+        {
+            cross =1;
+            hovered = true;
+        }
+        else cross =0;
+    }
+    else if(screenCount==3)
+    {
+        if ((mx - 406)*(mx - 406) + (my - 435)*(my - 435) <=225) 
+        {
+            cross =1;
+            hovered = true;
+        }
+        else cross =0;
+    }
+    else if(screenCount==4)
+    {
+        if((mx-404)*(mx-404)+(my-400)*(my-400)<=289) 
+        {
+            cross =1;
+            hovered = true;
+        }
+        else cross =0;
+    }
 }
 
 /*
@@ -1070,6 +1416,7 @@ void iMouse(int button, int state, int mx, int my)
             if((mx-483)*(mx-483)+(my-634)*(my-634)<=225) 
             {
                 screenCount =7; 
+                proceed=0;
             }
             else if(mx >=155 && mx <=333 && my >=417 && my <=457) 
             {
@@ -1077,6 +1424,7 @@ void iMouse(int button, int state, int mx, int my)
                 screen =1;
                 in_menu =1, in_game =0;
                 updateMusic();
+                proceed=0;
             }
             else if(mx >=155 && mx <=333 && my >=346 && my <=391) 
             {
@@ -1085,14 +1433,17 @@ void iMouse(int button, int state, int mx, int my)
             else if(mx >=155 && mx <=333 && my >=274 && my <=318) 
             {
                 screenCount =3; 
+                proceed=0;
             }
             else if(mx >=155 && mx <=333 && my >=203 && my <=251) 
             {
                 screenCount =4; 
+                proceed=0;
             }
             else if(mx >=420 && mx <=490 && my >=10 && my <=30) 
             {
                 screenCount =8;
+                proceed=0;
             }
         }
         else if(screenCount==1)
@@ -1103,23 +1454,26 @@ void iMouse(int button, int state, int mx, int my)
                 if((mx-387)*(mx-387)+(my-420)*(my-420)<=256) 
                 {
                     screenCount=0; 
-                    in_game=0, in_menu=1;                    
+                    in_game=0, in_menu=1;  
+                    proceed=0;
+                    updateMusic();                  
                 }
                 else if(mx>=99 && mx<=235 && my>=236 && my<=265) 
                 {
                     screen=3;
                     updateMusic();
+                    proceed=0;
                 }
             }     
             else if(screen==3){
-                if(mx >=128 && mx <=253 && my >=277 && my <=306){
-                    playerName[0] ='\0'; 
-                    screen=3;
+                if(mx >=108 && mx <=126 && my >=230 && my <=268){
+                    screen=1;
                     showWarning =false;
+                    proceed=0;
                     updateMusic();
-                    iDraw();
+                    return;
                 }
-                else if(mx >=258 && mx <=379 && my >=278 && my <=308){
+                else if(mx >=254 && mx <=392 && my >=230 && my <=268){
                     if(playerName[0] =='\0'){
                         showWarning =true;
                         return;
@@ -1128,12 +1482,14 @@ void iMouse(int button, int state, int mx, int my)
                         showWarning =false;
                         screen=4;
                         shouldStartMuse =true;
+                        proceed=0;
                         updateMusic();
                     }
                 }
                 else if((mx-389)*(mx-389)+(my-423)*(my-423)<=256) 
                 {
                     screenCount =1, screen=1; 
+                    proceed=0;
                     in_game=0, in_menu=1;
                     shouldStartMuse =true;
                     updateMusic();
@@ -1154,18 +1510,54 @@ void iMouse(int button, int state, int mx, int my)
                 }
                 else if(mx>=123 && mx<=226 && my>=62 && my<=90){
                     screen=3;
+                    proceed=0;
                     updateMusic();
+                }
+                else if(mx>=110 && mx<=369 && my>=413 && my<=454){
+                    gameModeValue =1; // Time Rush
+                }
+                else if(mx>=110 && mx<=369 && my>=345 && my<=386){
+                    gameModeValue =2; // Space Blast
                 }
                 else if(mx>=244 && mx<=367 && my>=62 && my<=90){
-                    if(subModeSelect ==1) fillwithballs();
-                    else if(subModeSelect ==2) fillwithdiamond();
-                    else if(subModeSelect ==3) fillwithpyramid();
-                    else if(subModeSelect ==4) fillwithrandom();
-                    screen=2;
-                    shouldStartMuse =true;
-                    updateMusic();
-                    gameStartTime =time(0);
+                    if(gameModeValue!=0 && subModeSelect==0){
+                        showSubModeWarning = true;
+                        return;
+                    }
+                    else if(gameModeValue==0 && subModeSelect!=0){
+                        showModeWarning = true;
+                        return;
+                    }
+                    else if(gameModeValue==0 && subModeSelect==0){
+                        showSubModeWarning = true;
+                        showModeWarning = true;
+                        return;
+                    }
+                    else {
+                        showSubModeWarning = false;
+                        showModeWarning = false;
+
+                        if (gameModeValue == 1) {
+                            // TIME RUSH MODE
+                            timeRushActive = true;
+                            timeRushRound = 0;
+                            subModeSelect = roundPatterns[timeRushRound];
+                            fillwithpattern(subModeSelect);
+                        }
+                        else {
+                            // SPACE BLAST (existing logic)
+                            if(subModeSelect == 1) fillwithballs();
+                            else if(subModeSelect == 2) fillwithdiamond();
+                            else if(subModeSelect == 3) fillwithpyramid();
+                            else if(subModeSelect == 4) fillwithrandom();
+                        }
+                        screen = 2;
+                        shouldStartMuse = true;
+                        updateMusic();
+                        gameStartTime = time(0);
+                    }
                 }
+
             }
             else if(screen==2){
                 if(mx>=421 && mx<=496 && my>=19 && my<=41){
@@ -1202,6 +1594,7 @@ void iMouse(int button, int state, int mx, int my)
             else if(mx >=120 && mx <=380 && my >=240 && my <=290){
                 screen =1;
                 shouldStartMuse =true;
+                timeRushActive = false;
                 screenCount =0;
                 updateMusic();
             }
@@ -1277,6 +1670,17 @@ void iMouse(int button, int state, int mx, int my)
                 screenCount =0; 
             }
         }
+        proceed=0;
+        back=0;
+        cross=0;
+        new_game=0;
+        high_score=0;   
+        settings=0;
+        exit_game=0;
+        help=0;
+        about_us=0;
+        mode_hover=0;
+        submode_hover=0;
     }
 }
 
@@ -1335,9 +1739,8 @@ void iKeyboard(unsigned char key)
             { // Enter key
                 iPlaySound("assets/sounds/click.wav", false, 20);
                 if(nameLength>0){
-                    printf("Name confirmed: %s\n", playerName); // optional debug log
-                    // Proceed to next screen or start game
-                    screen=2; // or screen =2; or any other intended screen
+                    printf("Name confirmed: %s\n", playerName); 
+                    screen=2; 
                     showWarning=false;
                 }
             }
@@ -1406,8 +1809,14 @@ int main(int argc, char *argv[])
     game_muse=iPlaySound("assets/sounds/music_game.wav", true, 0);
     iPauseSound(game_muse);
     // iPauseSound(loadGameMus);
-    iLoadImage(&sc3,"assets/images/screen3.png");
+    iLoadImage(&sc3,"assets/images/screen3.jpeg");
+    iLoadImage(&sc4,"assets/images/screen4.jpeg");
+    iLoadImage(&sc1,"assets/images/new_game_1.jpeg");
+    iLoadImage(&newgame00, "assets/images/bg_0.png");
+    iLoadImage(&bg_3,"assets/images/bg_3.png");
+    iLoadImage(&bg_4,"assets/images/bg_4.png");
+    iLoadImage(&bg_7,"assets/images/bg_7.png");
     iInitialize(width, height, "Bouncy Bonanza");
-    iSetTimer(500, toggleCursor);
+    iSetTimer(400, toggleCursor);
     return 0;
 }
