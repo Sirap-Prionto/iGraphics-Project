@@ -6,6 +6,8 @@ using namespace std;
 /*
 function iDraw() is called again and again by the system.
 */
+int savePrompt = 0; // 0 = no, 1 = asking, 2 = confirmed, 3 = denied
+int saveAction = 0; // 1 = menu, 2 = status, 3 = modes
 int pauseStartTime = 0;
 int pauseDuration = 0;
 bool gamePaused = false;
@@ -662,6 +664,11 @@ void updateMusic()
         musicPaused =false;
     }
 }
+void fillwithpattern(int pattern) {
+    if (pattern == 1) fillwithballs();
+    else if (pattern == 2) fillwithdiamond();
+    else if (pattern == 3) fillwithpyramid();
+}
 void saveGameState() {
     time_t now = time(0);
     struct tm* t = localtime(&now);
@@ -682,7 +689,8 @@ void saveGameState() {
     fprintf(fp, "submode %d\n", subModeSelect);
     fprintf(fp, "time %d\n", elapsedTime);
     fprintf(fp, "name %s\n", playerName);
-
+    fprintf(fp, "combo %d\n", combo);
+    fprintf(fp, "moves %d\n", moves);
     fclose(fp);
     printf("Saved game to %s\n", filename);
 }
@@ -698,7 +706,8 @@ void loadGameState() {
     int savedTime;
     fscanf(fp, "time %d\n", &savedTime);
     fscanf(fp, "name %[^\n]", playerName);
-
+    fscanf(fp, "combo %d\n", &combo);
+    fscanf(fp, "moves %d\n", &moves);
     fclose(fp);
 
     // Re-init state
@@ -712,12 +721,6 @@ void loadGameState() {
     timeRushRound = 0;
 
     printf("Game state loaded.\n");
-}
-
-void fillwithpattern(int pattern) {
-    if (pattern == 1) fillwithballs();
-    else if (pattern == 2) fillwithdiamond();
-    else if (pattern == 3) fillwithpyramid();
 }
 
 Image bg_0, bg_3, bg_4, bg_7;
@@ -1023,6 +1026,18 @@ void iDraw()
                     iSetColor(18, 61, 30);
                 }
                 iTextBold(220, 270, "Settings", GLUT_BITMAP_HELVETICA_18);
+                curv_border(150, 220, 200, 30, 13);
+                iSetColor(14, 31, 18);
+                curv(151, 220.5, 198, 28.75, 13);
+                iSetColor(177, 224, 190);
+                iTextBold(228.3, 230, "Save Game", GLUT_BITMAP_HELVETICA_18);
+                if (savePrompt == 1) {
+                    iSetColor(0, 0, 0);
+                    iFilledRectangle(120, 180, 260, 100);
+                    iSetColor(255, 255, 255);
+                    iTextBold(140, 240, "Save game before leaving?", GLUT_BITMAP_HELVETICA_18);
+                    iTextBold(160, 200, "[Y]es    [N]o", GLUT_BITMAP_HELVETICA_18);
+                }
             }
             else if(option_screen==2){
                 iSetTransparentColor(159, 181, 176, 0.15);
@@ -1868,6 +1883,8 @@ void iMouse(int button, int state, int mx, int my)
                             strcpy(playerName, "\0");
                             showCursor = true;
                             name_taken = false;
+                            savePrompt = 1;
+                            saveAction = 1;
                         } 
                         else if (my >= 341 && my <= 370) { // Back to Status
                             screenCount=1, screen=1;
@@ -1879,6 +1896,8 @@ void iMouse(int button, int state, int mx, int my)
                             strcpy(playerName, "\0");
                             showCursor = true;
                             name_taken = false;
+                            savePrompt = 1;
+                            saveAction = 2;
                         } 
                         else if (my >= 301 && my <= 330) { // Back to Choices
                             screenCount = 1, screen=4;
@@ -1893,11 +1912,16 @@ void iMouse(int button, int state, int mx, int my)
                                 subModeSelect = 0; // Reset subModeSelect for Space Blast
                             }
                             updateMusic();
+                            savePrompt = 1;
+                            saveAction = 3;
                         } 
                         else if (my >= 261 && my <= 291) { // Settings
                             screenCount = 1, screen=2;
                             option_screen = 2; 
-                        }         
+                        }      
+                        else if (my >= 220 && my <= 250) {
+                            saveGameState();
+                        }
                     }    
                     else if((mx-398)*(mx-398)+(my-497)*(my-497)<=256){
                         screenCount = 1, screen=2; 
@@ -2112,18 +2136,42 @@ void iKeyboard(unsigned char key)
             }
         }
     }
-    if (key == 27) { // ESC key
-        if (screenCount == 1 && screen == 2) { // Only from game screen
-            if (option_screen == 0) {
+    if(key == 27){ // ESC key
+        if(screenCount==1 && screen==2){ // Only from game screen
+            if(option_screen==0){
                 option_screen = 1; // open options
                 gamePaused = true;
                 pauseStartTime = time(0);
             } 
-            else {
+            else{
                 option_screen = 0; // close options
                 pauseDuration += time(0) - pauseStartTime;
                 gamePaused = false;
             }
+        }
+    }
+    if(savePrompt == 1){
+        if(key == 'y' || key == 'Y'){
+            saveGameState();
+            savePrompt = 2;  // Proceed with action
+        }
+        else if(key == 'n' || key == 'N') {
+            savePrompt = 3;  // Proceed without saving
+        }
+        if (savePrompt == 2 || savePrompt == 3) {
+            if (saveAction == 1) {
+                screenCount = 0;
+                screen = 1;
+            } 
+            else if (saveAction == 2) {
+                screen = 4;
+            } 
+            else if (saveAction == 3) {
+                screen = 1;
+            }
+            option_screen = 0;
+            savePrompt = 0;
+            saveAction = 0;
         }
     }
 

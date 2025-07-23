@@ -1,0 +1,6 @@
+mode 1
+submode 2
+time 25
+name a
+combo 0
+moves 0
