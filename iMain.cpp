@@ -2,12 +2,15 @@
 #include "iSound.h"
 #include <bits/stdc++.h>
 #include <windows.h>
+#include <time.h>
+
 using namespace std;
 /*
 function iDraw() is called again and again by the system.
 */
-int savePrompt = 0; // 0 = no, 1 = asking, 2 = confirmed, 3 = denied
-int saveAction = 0; // 1 = menu, 2 = status, 3 = modes
+int score_screen = 0;
+int savePrompt = 0; //0=no,1=asking,2=confirmed,3=denied
+int saveAction = 0; //1=menu,2=status,3=modes
 int pauseStartTime = 0;
 int pauseDuration = 0;
 bool gamePaused = false;
@@ -16,7 +19,6 @@ int combo_hove=0, option_hove=0, time_hove=0;
 int resume=0, restart=0, settin=0, back_men=0, back_stat=0, back_choce=0;
 bool timeRushActive = false;
 int timeRushRound = -1;
-const int timeLimits[] = {300,240,180}; // 5,4,3
 int hoverSoundChannel = -1;
 bool hoverSoundPlaying = false;
 int ch=-1, submode_hover=0, mode_hover=0;
@@ -51,7 +53,24 @@ int nameLength =0;
 bool showCursor =true;
 bool showWarning =false;
 int mode=0;
+int victoryType = 0;
 time_t lastHoverSound = 0;
+int getTimeLimitForSubmode(int mode) {
+    switch (mode) {
+        case 1: return 300; 
+        case 2: return 240; 
+        case 3: return 360; 
+        default: return 300;
+    }
+}
+int getMoveThresholdForSubmode(int mode) {
+    switch (mode) {
+        case 1: return 5; // box 5 moves
+        case 2: return 4; // diamond 4 moves
+        case 3: return 6; // pyramid 6 moves
+        default: return 5;
+    }
+}
 
 void toggleCursor(){
     showCursor=!showCursor;
@@ -70,7 +89,12 @@ int getTextWidth(const char* text) {
     }
     return width;
 }
-
+struct ScoreEntry {
+    string name;
+    int combo;
+    int time;
+};
+static vector<ScoreEntry> highScores;
 typedef struct{
     int red,green,blue;
     int exist;
@@ -225,12 +249,12 @@ void fillwithpyramid()
     noballs();
     set_coordinates();
 
-    for(int i=0;i<25;i++){
+    for(int i=1;i<25;i++){
         for(int j=i;j<25-i;j++){
             set_static_ball(rand()%6,i,j);
         }
     }
-
+    all_ball_up();
 }
 void fillwithrandom()
 {
@@ -257,13 +281,13 @@ void drawAxis()
 double angle = 0;
 double mouse_x = 0;
 double mouse_y = 5;
-double mouse_r;
+double mouse_r=0;
 double ball_x = 250;
 double ball_y = 50;
 int throw_ball = 0;
 double dx;
 double dy;
-double velocity = 1;
+double velocity = 10;
 int color_counter = 0;
 int r = 255;
 int g = 0;
@@ -316,18 +340,40 @@ void resetBall()
 
 }
 
+
+int dotdistance = 20;
+int dotnum = 30;
 void drawCannon()
 {
-    double cannon_x = 20*mouse_x/mouse_r;
-    double cannon_y = 20*mouse_y/mouse_r;
-    iSetLineWidth(4);
+    double sin = mouse_y/mouse_r;
+    double cos = mouse_x/mouse_r;
+    double cannon_x = 30*cos;
+    double cannon_y = 30*sin;
+    iSetLineWidth(2);
     iSetColor(255,255,255);
     iLine(250-10,50,250+cannon_x-10,50+cannon_y);
     iLine(250+10,50,250+cannon_x+10,50+cannon_y);
-    iSetLineWidth(4);
+    iSetLineWidth(1);
     iSetColor(r,g,b);
-    iLine(250,50,250+0.5*cannon_x,50+0.5*cannon_y);
+    //iLine(250,50,250+3*cannon_x,50+3*cannon_y);
+
+
+
+
     if(throw_ball==0){
+        double dotx = 250;
+        double doty = 50;
+        int dots = 0;
+        while (dots<dotnum){
+            dots++;
+            if(dotx<0 || dotx>width) cos*=-1;
+            if(dotx<0) dotx*=-1;
+            if(dotx>width) dotx=2*width-dotx;
+            iFilledCircle(dotx,doty,2);
+
+            dotx+=dotdistance*cos;
+            doty+=dotdistance*sin;
+        }
         iSetColor(r,g,b);
         iFilledCircle(250,40, ball_radius);
         iSetColor(255,255,255);
@@ -343,10 +389,19 @@ void drawCannon()
     iFilledCircle(254+ball_diameter*2-5,40+5,2);
 
 }
+double poppingsize=2;
+int sleeptime = 20;
+
 void check_neighbour(int i,int j){
-    if (i < 0 || i >= 31 || j < 0 || j >= 25) return; // 🚨 new line added
+    if(i<0 || i>=31 || j<0 || j>=25) return; 
     combo++;
     all_static_balls[i][j].exist=0;
+    if(combo>2){
+        iPlaySound("assets/sounds/pop.wav", false, 20);
+        iSetColor(all_static_balls[i][j].red,all_static_balls[i][j].green,all_static_balls[i][j].blue);
+        iFilledCircle(all_static_balls[i][j].x,all_static_balls[i][j].y,poppingsize*ball_radius);
+        Sleep(sleeptime);
+    }
     if (i!=0 && all_static_balls[i-1][j].exist){
         if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
         check_neighbour(i-1,j);
@@ -532,22 +587,33 @@ void check_collision(int i, int j){
         if (all_static_balls[i-1][j].exist){
             if (r==all_static_balls[i-1][j].red && g==all_static_balls[i-1][j].green && b==all_static_balls[i-1][j].blue){
                 all_static_balls[i-1][j].exist=0;
+                iSetColor(all_static_balls[i-1][j].red,all_static_balls[i-1][j].green,all_static_balls[i-1][j].blue);
+                iFilledCircle(all_static_balls[i-1][j].x,all_static_balls[i-1][j].y,poppingsize*ball_radius);
+                Sleep(sleeptime);
             }
         }
         if (all_static_balls[i+1][j].exist){
             if (r==all_static_balls[i+1][j].red && g==all_static_balls[i+1][j].green && b==all_static_balls[i+1][j].blue){
                 all_static_balls[i+1][j].exist=0;
-
+                iSetColor(all_static_balls[i+1][j].red,all_static_balls[i+1][j].green,all_static_balls[i+1][j].blue);
+                iFilledCircle(all_static_balls[i+1][j].x,all_static_balls[i+1][j].y,poppingsize*ball_radius);
+                Sleep(sleeptime);
             }
         }
         if (j!=0 && all_static_balls[i][j-1].exist){
             if (r==all_static_balls[i][j-1].red && g==all_static_balls[i][j-1].green && b==all_static_balls[i][j-1].blue){
                 all_static_balls[i][j-1].exist=0;
+                iSetColor(all_static_balls[i][j-1].red,all_static_balls[i][j-1].green,all_static_balls[i][j-1].blue);
+                iFilledCircle(all_static_balls[i][j-1].x,all_static_balls[i][j-1].y,poppingsize*ball_radius);
+                Sleep(sleeptime);
             }
         }
         if (j!=24 && all_static_balls[i][j+1].exist){
             if (r==all_static_balls[i][j+1].red && g==all_static_balls[i][j+1].green && b==all_static_balls[i][j+1].blue){
                 all_static_balls[i][j+1].exist=0;
+                iSetColor(all_static_balls[i][j+1].red,all_static_balls[i][j+1].green,all_static_balls[i][j+1].blue);
+                iFilledCircle(all_static_balls[i][j+1].x,all_static_balls[i][j+1].y,poppingsize*ball_radius);
+                Sleep(sleeptime);
             }
         }
          /*
@@ -589,9 +655,13 @@ void drawBall()
     iSetColor(255,255,255);
     iFilledCircle(ball_x-5,ball_y+5,2);
 
-    if(ball_x - ball_radius<0 || ball_x + ball_radius > width)
+    //if(ball_x - ball_radius<0 || ball_x + ball_radius > width)
+    if(ball_x<0 || ball_x> width)
         dx = -dx;
 
+    ball_x+=dx;
+    ball_y+=dy;
+    /*
     double steps = 4.0;
     for (int s = 0; s < steps; s++) {
         ball_x += dx / steps;
@@ -605,7 +675,7 @@ void drawBall()
             break; // Collision happened, stop moving
         }
     }
-
+    */
 
 }
 //----------------------game over function --------------------------------------
@@ -619,22 +689,22 @@ void gameover(){
     }
 }
 void curv(int x, int y, int w, int h, int r){
-        iFilledRectangle(x + r, y, w - 2*r, h); 
-        iFilledRectangle(x, y + r, r, h - 2*r); 
-        iFilledRectangle(x + w - r, y + r, r, h - 2*r); 
-        iFilledCircle(x + r, y + r, r); 
-        iFilledCircle(x + w - r, y + r, r); 
-        iFilledCircle(x + r, y + h - r, r); 
-        iFilledCircle(x + w - r, y + h - r, r); 
+        iFilledRectangle(x + r, y, w - 2*r, h);
+        iFilledRectangle(x, y + r, r, h - 2*r);
+        iFilledRectangle(x + w - r, y + r, r, h - 2*r);
+        iFilledCircle(x + r, y + r, r);
+        iFilledCircle(x + w - r, y + r, r);
+        iFilledCircle(x + r, y + h - r, r);
+        iFilledCircle(x + w - r, y + h - r, r);
 }
 void curv_border(int x, int y, int w, int h, int r){
-        iFilledRectangle(x + r-.3, y-.3, w - 2*r+.6, h+.6); 
-        iFilledRectangle(x-.3, y + r-.3, r+.6, h - 2*r+.6); 
-        iFilledRectangle(x + w - r-.3, y + r-.3, r+.6, h - 2*r+.6); 
-        iFilledCircle(x + r, y + r, r+.3); 
-        iFilledCircle(x + w - r, y + r, r+.3); 
-        iFilledCircle(x + r, y + h - r, r+.3); 
-        iFilledCircle(x + w - r, y + h - r, r+.3); 
+        iFilledRectangle(x + r-.3, y-.3, w - 2*r+.6, h+.6);
+        iFilledRectangle(x-.3, y + r-.3, r+.6, h - 2*r+.6);
+        iFilledRectangle(x + w - r-.3, y + r-.3, r+.6, h - 2*r+.6);
+        iFilledCircle(x + r, y + r, r+.3);
+        iFilledCircle(x + w - r, y + r, r+.3);
+        iFilledCircle(x + r, y + h - r, r+.3);
+        iFilledCircle(x + w - r, y + h - r, r+.3);
 }
 void updateMusic()
 {
@@ -650,7 +720,7 @@ void updateMusic()
     int volumeValue =(volume ==0) ? 20 : (volume ==2) ? 60 : 40;
 
     if (ch !=-1 && ch !=desiredHandle)
-        iPauseSound(ch); 
+        iPauseSound(ch);
     if (wantGameMusic && menu_muse != -1) iPauseSound(menu_muse);
     if (!wantGameMusic && game_muse != -1) iPauseSound(game_muse);
     if (ch !=desiredHandle || musicPaused)
@@ -672,45 +742,36 @@ void fillwithpattern(int pattern) {
 void saveGameState() {
     time_t now = time(0);
     struct tm* t = localtime(&now);
-
-    char filename[100];
-    sprintf(filename, "save/save_%04d%02d%02d_%02d%02d%02d.txt",
-            t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
-            t->tm_hour, t->tm_min, t->tm_sec);
-
+    const char* filename = (gameModeValue == 1)? "save/time.txt": "save/space.txt";
     FILE* fp = fopen(filename, "w");
-    if (fp == NULL) {
-        printf("Failed to open save file.\n");
-        return;
-    }
-
-    int elapsedTime = time(0) - gameStartTime - pauseDuration;
-    fprintf(fp, "mode %d\n", gameModeValue);
-    fprintf(fp, "submode %d\n", subModeSelect);
-    fprintf(fp, "time %d\n", elapsedTime);
-    fprintf(fp, "name %s\n", playerName);
-    fprintf(fp, "combo %d\n", combo);
-    fprintf(fp, "moves %d\n", moves);
+    if(!fp) return;
+    int elapsed =(int)(time(0)- gameStartTime- pauseDuration);
+    const char* modeName =(gameModeValue == 1) ? "TimeRush" : "SpaceBlast";
+    fprintf(fp, "%s %s %02d:%02d %04d-%02d-%02d\n",
+        modeName,
+        playerName,
+        elapsed/60, elapsed%60,
+        t->tm_year+1900,
+        t->tm_mon+1,
+        t->tm_mday);
     fclose(fp);
-    printf("Saved game to %s\n", filename);
 }
-void loadGameState() {
-    FILE* fp = fopen("save/savefile.txt", "r");
-    if (fp == NULL) {
-        printf("Failed to open save file.\n");
+void loadGameState(const string &filepath){
+    FILE* fp = fopen(filepath.c_str(), "r");
+    if (!fp) {
+        printf("Failed to open save file %s\n", filepath.c_str());
         return;
     }
-
+    int savedTime;
     fscanf(fp, "mode %d\n", &gameModeValue);
     fscanf(fp, "submode %d\n", &subModeSelect);
-    int savedTime;
     fscanf(fp, "time %d\n", &savedTime);
     fscanf(fp, "name %[^\n]", playerName);
     fscanf(fp, "combo %d\n", &combo);
     fscanf(fp, "moves %d\n", &moves);
     fclose(fp);
 
-    // Re-init state
+    // restore state
     screen = 2;
     screenCount = 1;
     fillwithpattern(subModeSelect);
@@ -718,9 +779,65 @@ void loadGameState() {
     pauseDuration = 0;
     gameOverState = false;
     timeRushActive = (gameModeValue == 1);
-    timeRushRound = 0;
+    timeRushRound  = 0;
+    printf("Loaded game from %s\n", filepath.c_str());
+}
+vector<string> saveFiles;
+void listSaveFiles(){
+    saveFiles.clear();
+    FILE* fp;
+    char buf[256];
+    fp =fopen("save/time.txt", "r");
+    if(fp){
+        while(fgets(buf, sizeof(buf), fp)){
+            buf[strcspn(buf, "\r\n")] = 0;
+            if(buf[0]) saveFiles.push_back(buf);
+        }
+        fclose(fp);
+    }
+    fp =fopen("save/space.txt", "r");
+    if(fp){
+        while(fgets(buf, sizeof(buf), fp)){
+            buf[strcspn(buf, "\r\n")] = 0;
+            if(buf[0]) saveFiles.push_back(buf);
+        }
+        fclose(fp);
+    }
+}
 
-    printf("Game state loaded.\n");
+void loadHighScores(int mode) {
+    highScores.clear();
+    ifstream file;
+
+    if (mode == 1)
+        file.open("save/timerush.txt");
+    else
+        file.open("save/spaceblast.txt");
+
+    if (!file) return;
+
+    while (!file.eof()) {
+        ScoreEntry s;
+        if (mode == 1)
+            file >> s.name >> s.combo >> s.time;
+        else {
+            file >> s.name >> s.time;
+            s.combo = 0;
+        }
+
+        if (!file.fail())
+            highScores.push_back(s);
+    }
+    file.close();
+
+    if (mode == 1)
+        sort(highScores.begin(), highScores.end(), [](auto &a, auto &b) {
+            return a.combo > b.combo;
+        });
+    else
+        sort(highScores.begin(), highScores.end(), [](auto &a, auto &b) {
+            return a.time < b.time;
+        });
 }
 
 Image bg_0, bg_3, bg_4, bg_7;
@@ -732,9 +849,9 @@ void iDraw()
         if(music_vol==1 && ch==-1)
             updateMusic();
         iClear();
-        iSetColor(147, 213, 230); 
-        iFilledRectangle(0, 0, 500, 650); 
-        iShowLoadedImage(-50, -30, &newgame00); 
+        iSetColor(147, 213, 230);
+        iFilledRectangle(0, 0, 500, 650);
+        iShowLoadedImage(-50, -30, &newgame00);
         if(new_game==0) iSetColor(42, 54, 53);
         else{
             iSetColor(224, 209, 197);
@@ -752,7 +869,7 @@ void iDraw()
             curv(149, 343, 194, 46, 20);
             iSetColor(224, 209, 197);
         }
-        iTextBold(185, 358, "High-scores", GLUT_BITMAP_TIMES_ROMAN_24); 
+        iTextBold(185, 358, "High-scores", GLUT_BITMAP_TIMES_ROMAN_24);
         if(settings==0) iSetColor(42, 54, 53);
         else{
             iSetColor(224, 209, 197);
@@ -761,7 +878,7 @@ void iDraw()
             curv(148, 274, 193, 46, 20);
             iSetColor(224, 209, 197);
         }
-        iTextBold(206, 290, "Settings", GLUT_BITMAP_TIMES_ROMAN_24); 
+        iTextBold(206, 290, "Settings", GLUT_BITMAP_TIMES_ROMAN_24);
         if(exit_game==0) iSetColor(42, 54, 53);
         else {
             iSetColor(224, 209, 197);
@@ -770,7 +887,7 @@ void iDraw()
             curv(149, 204, 194, 46, 20);
             iSetColor(224, 209, 197);
         }
-        iTextBold(220, 218, "Exit", GLUT_BITMAP_TIMES_ROMAN_24); 
+        iTextBold(220, 218, "Exit", GLUT_BITMAP_TIMES_ROMAN_24);
         iSetColor(232, 167, 160);
         iFilledCircle(483, 634, 15);
         if(help==0) iSetColor(255, 0, 0);
@@ -779,7 +896,7 @@ void iDraw()
         iSetColor(0,0,0);
         iTextBold(478, 626,"?", GLUT_BITMAP_TIMES_ROMAN_24);
         iSetColor(232, 167, 160);
-        curv_border(420, 10, 70, 20, 10); 
+        curv_border(420, 10, 70, 20, 10);
         if(about_us==0) iSetColor(24, 66, 35);
         else iSetColor(151, 184, 167);
         curv(420, 10, 70, 20, 10);
@@ -791,7 +908,6 @@ void iDraw()
     {
         // Code for the second screen, new game screen
         iClear();
-        
         if(screen ==1)
         {
             iShowLoadedImage(-110, -120, &sc1);
@@ -808,7 +924,7 @@ void iDraw()
                 iFilledCircle(387, 420, 15);
                 iSetColor(31, 16, 14);
             }
-            iTextBold(381, 414, "X", GLUT_BITMAP_HELVETICA_18);
+            iTextBold(381, 414, "X",GLUT_BITMAP_HELVETICA_18);
             iSetColor(139, 201, 198);
             curv_border(98, 232, 138, 36, 13);
             curv_border(241, 232, 138, 36, 13);
@@ -880,32 +996,29 @@ void iDraw()
             drawAxis();
             draw_all_static_ball();
             int elapsed;
-            if (timeRushActive) {
-                elapsed = time(0) - gameStartTime - pauseDuration;
-                if(elapsed >= timeLimits[timeRushRound]){
+            if(timeRushActive){
+                elapsed = time(0)-gameStartTime - pauseDuration;
+                int currentLimit = getTimeLimitForSubmode(subModeSelect);
+                if(elapsed >= currentLimit){
                     timeRushRound++;
-                    if(timeRushRound >= 3) {
+                    if(timeRushRound>=3){
                         timeRushActive = false;
-                        screenCount = 5; // Game Over screen
+                        screenCount = 5;
                     } 
                     else{
-                        subModeSelect = (subModeSelect + 1) % 4? ((subModeSelect+1)%4)+1 : (subModeSelect + 1) % 4; // Cycle through sub-modes
-                        fillwithpattern(subModeSelect);
-                        gameStartTime = time(0);   // reset timer
-                        pauseDuration = 0;         // reset paused time
-                        option_screen = 0;         // no menu open
-                        gamePaused = false;        // resume state
+                        timeRushActive = false;
+                        screenCount = 5; 
                     }
                 }
             }
-            if(gamePaused && pauseStartTime != 0) {
+            else if(gamePaused && pauseStartTime != 0){
                 elapsed = pauseStartTime - gameStartTime - pauseDuration;
-            } 
+            }
             else{
                 elapsed = time(0) - gameStartTime - pauseDuration;
             }
             char timerStr[30];
-            int remaining = timeRushActive ? (timeLimits[timeRushRound] - elapsed) : elapsed;
+            int remaining = timeRushActive ? (getTimeLimitForSubmode(subModeSelect) - elapsed) : elapsed;
             if (timeRushActive && remaining < 0) remaining = 0;
             sprintf(timerStr, "Time : %02d:%02d", remaining / 60, remaining % 60);
             if(time_hove==0 || option_screen!=0) iSetColor(19, 38, 46);
@@ -913,12 +1026,25 @@ void iDraw()
             iTextBold(239, 11, timerStr, GLUT_BITMAP_HELVETICA_12);
             drawCannon();
             check_collision(i,j);
+            bool anyLeft = false;
+            for (int ii = 0; ii < 31 && !anyLeft; ++ii) {
+                for (int jj = 0; jj < 25; ++jj) {
+                    if (all_static_balls[ii][jj].exist) {
+                        anyLeft = true;
+                        break;
+                    }
+                }
+            }
+            if (!anyLeft){
+                screen = 6;
+                screenCount = 1;
+                victoryType = 1; 
+            }
             gameover();
-
             if(throw_ball)
                 drawBall();
 
-            if (!timeRushActive && gameModeValue == 2 && moves == 2) {
+            if(!timeRushActive && gameModeValue == 2 && moves >= getMoveThresholdForSubmode(subModeSelect)){
                 all_ball_down();
                 moves = 0;
             }
@@ -947,7 +1073,7 @@ void iDraw()
                     iFilledCircle(398, 497, 16);
                     iSetColor(46, 34, 34);
                 }
-                iTextBold(392, 491, "X", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(392, 491, "X",GLUT_BITMAP_HELVETICA_18);
                 iSetColor(61, 99, 90);
                 curv_border(150, 460, 200, 30, 13);
                 if(resume==0){
@@ -956,11 +1082,11 @@ void iDraw()
                     iSetColor(177, 224, 190);
                 }
                 else{
-                    iSetColor(110, 128, 114);                
+                    iSetColor(110, 128, 114);
                     curv(151, 460.5, 198, 28.75, 13);
                     iSetColor(18, 61, 30);
                 }
-                iTextBold(220, 470, "Resume", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(220, 470, "Resume",GLUT_BITMAP_HELVETICA_18);
                 iSetColor(61, 99, 90);
                 curv_border(150, 420, 200, 30, 13);
                 if(restart==0){
@@ -969,11 +1095,11 @@ void iDraw()
                     iSetColor(177, 224, 190);
                 }
                 else{
-                    iSetColor(110, 128, 114);                
+                    iSetColor(110, 128, 114);
                     curv(151, 420.5, 198, 28.75, 13);
                     iSetColor(18, 61, 30);
-                }       
-                iTextBold(222, 430, "Restart", GLUT_BITMAP_HELVETICA_18);
+                }
+                iTextBold(222, 430, "Restart",GLUT_BITMAP_HELVETICA_18);
                 iSetColor(61, 99, 90);
                 curv_border(150, 380, 200, 30, 13);
                 if(back_men==0){
@@ -982,11 +1108,11 @@ void iDraw()
                     iSetColor(177, 224, 190);
                 }
                 else{
-                    iSetColor(110, 128, 114);                
+                    iSetColor(110, 128, 114);
                     curv(151, 380.5, 198, 28.75, 13);
                     iSetColor(18, 61, 30);
                 }
-                iTextBold(228.3, 390, "Menu", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(228.3, 390, "Menu",GLUT_BITMAP_HELVETICA_18);
                 iSetColor(61, 99, 90);
                 curv_border(150, 340, 200, 30, 13);
                 if(back_stat==0){
@@ -995,11 +1121,11 @@ void iDraw()
                     iSetColor(177, 224, 190);
                 }
                 else{
-                    iSetColor(110, 128, 114);                
+                    iSetColor(110, 128, 114);
                     curv(151, 340.5, 198, 28.75, 13);
                     iSetColor(18, 61, 30);
                 }
-                iTextBold(200, 350, "Status Select", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(200, 350, "Status Select",GLUT_BITMAP_HELVETICA_18);
                 iSetColor(61, 99, 90);
                 curv_border(150, 300, 200, 30, 13);
                 if(back_choce==0){
@@ -1008,11 +1134,11 @@ void iDraw()
                     iSetColor(177, 224, 190);
                 }
                 else{
-                    iSetColor(110, 128, 114);                
+                    iSetColor(110, 128, 114);
                     curv(151, 300.5, 198, 28.75, 13);
                     iSetColor(18, 61, 30);
                 }
-                iTextBold(225, 310, "Modes", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(225, 310, "Modes",GLUT_BITMAP_HELVETICA_18);
                 iSetColor(61, 99, 90);
                 curv_border(150, 260, 200, 30, 13);
                 if(settin==0){
@@ -1021,23 +1147,16 @@ void iDraw()
                     iSetColor(177, 224, 190);
                 }
                 else{
-                    iSetColor(110, 128, 114);                
+                    iSetColor(110, 128, 114);
                     curv(151, 260.5, 198, 28.75, 13);
                     iSetColor(18, 61, 30);
                 }
-                iTextBold(220, 270, "Settings", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(220, 270, "Settings",GLUT_BITMAP_HELVETICA_18);
                 curv_border(150, 220, 200, 30, 13);
                 iSetColor(14, 31, 18);
                 curv(151, 220.5, 198, 28.75, 13);
                 iSetColor(177, 224, 190);
-                iTextBold(228.3, 230, "Save Game", GLUT_BITMAP_HELVETICA_18);
-                if (savePrompt == 1) {
-                    iSetColor(0, 0, 0);
-                    iFilledRectangle(120, 180, 260, 100);
-                    iSetColor(255, 255, 255);
-                    iTextBold(140, 240, "Save game before leaving?", GLUT_BITMAP_HELVETICA_18);
-                    iTextBold(160, 200, "[Y]es    [N]o", GLUT_BITMAP_HELVETICA_18);
-                }
+                iTextBold(228.3, 230, "Save Game",GLUT_BITMAP_HELVETICA_18);
             }
             else if(option_screen==2){
                 iSetTransparentColor(159, 181, 176, 0.15);
@@ -1058,8 +1177,27 @@ void iDraw()
                     iFilledCircle(398, 497, 16);
                     iSetColor(46, 34, 34);
                 }
-                iTextBold(392, 491, "X", GLUT_BITMAP_HELVETICA_18);
-                
+                iTextBold(392, 491, "X",GLUT_BITMAP_HELVETICA_18);
+            }
+            else if(option_screen==3){
+                iSetTransparentColor(0,0,0,0.5);
+                iFilledRectangle(0,0,width,height);
+                iSetColor(255,255,255);
+                iTextBold(180, 390, "Save your game?", GLUT_BITMAP_TIMES_ROMAN_24);
+
+                // Yes button
+                curv_border(160, 320, 80, 30, 10);
+                iSetColor(50, 100, 80);
+                curv(161, 321, 78, 28, 10);
+                iSetColor(255, 255, 255);
+                iTextBold(185, 330, "Yes",GLUT_BITMAP_HELVETICA_18);
+
+                // No button
+                curv_border(260, 320, 80, 30, 10);
+                iSetColor(100, 50, 50);
+                curv(261, 321, 78, 28, 10);
+                iSetColor(255, 255, 255);
+                iTextBold(287, 330, "No",GLUT_BITMAP_HELVETICA_18);
             }
         }
         else if(screen ==3) {
@@ -1083,7 +1221,7 @@ void iDraw()
                 iFilledCircle(391.5, 421.5, 15);
                 iSetColor(31, 16, 14);
             }
-            iTextBold(385, 414, "X", GLUT_BITMAP_HELVETICA_18);
+            iTextBold(385, 414, "X",GLUT_BITMAP_HELVETICA_18);
             iSetColor(87, 77, 63);
             curv_border(108, 229, 118, 40, 10);
             curv_border(253, 229, 132, 40, 10);
@@ -1109,7 +1247,7 @@ void iDraw()
             iSetColor(44, 44, 84);
             int nameX = 127;
             int nameY = 304;
-            iSetColor(0,0,0); 
+            iSetColor(0,0,0);
             iTextBold(nameX, nameY, playerName, GLUT_BITMAP_TIMES_ROMAN_24);
             static int pulse = 0;
             static bool increasing = true;
@@ -1128,8 +1266,8 @@ void iDraw()
             if(showWarning) {
                 iSetColor(200, 50, 50);
                 iTextBold(123, 283, "Only A-Z, a-z, 0-9, and _ allowed!", GLUT_BITMAP_HELVETICA_12);
-            }        
-        }            
+            }
+        }
         else if(screen==4){
             iClear();
             iShowLoadedImage(-110, -120, &sc4);
@@ -1189,7 +1327,7 @@ void iDraw()
             iFilledPolygon(arrow_go_x_1, arrow_go_y_1, 3);
             if(back==0) iSetColor(77, 34, 29);
             else iSetColor(232, 226, 183);
-            iFilledRectangle(159, 52, 75, 36);     
+            iFilledRectangle(159, 52, 75, 36);
             iFilledPolygon(arrow_back_x_1, arrow_back_y_1, 3);
             if(proceed==0) iSetColor(232, 226, 183);
             else iSetColor(77, 34, 29);
@@ -1197,6 +1335,127 @@ void iDraw()
             if(back==0) iSetColor(232, 226, 183);
             else iSetColor(77, 34, 29);
             iTextBold(156, 63.3, "BACK", GLUT_BITMAP_TIMES_ROMAN_24);
+        }
+        else if(screen==5){
+            listSaveFiles();  // populates saveFiles vector
+            iClear();
+            iShowLoadedImage(-50, -30, &sc3);
+            iSetTransparentColor(147, 213, 230, 0.2);
+            iFilledRectangle(0, 0, 500, 650);
+            iSetColor(55, 74, 66);
+            curv_border(75, 150, 350, 400, 14);
+            iSetColor(154, 204, 237);
+            curv(75, 150, 350, 400, 14);
+            iSetColor(255, 255, 255);
+            iFilledCircle(422, 548, 17);
+            if(!cross){
+                iSetColor(255, 0, 0);
+                iFilledCircle(422, 548, 15);
+                iSetColor(255, 255, 255);
+            }
+            else{
+                iSetColor(176, 147, 144);
+                iFilledCircle(422, 548, 15);
+                iSetColor(28, 10, 6);
+            }
+            iTextBold(416, 542.25, "X",GLUT_BITMAP_HELVETICA_18);
+            iSetColor(55, 74, 66);
+            iTextBold(220,545,"Load Game",GLUT_BITMAP_TIMES_ROMAN_24);
+            const int colX[] = { 90, 185, 285, 360 };
+            const int headerY = 520, rowDY = 30;
+            iSetColor(255,255,255);
+            const char* titles[] = {"Mode","Name","Time","Date"};
+            for(int c = 0; c < 4; ++c)
+                iTextBold(colX[c], headerY, titles[c], GLUT_BITMAP_HELVETICA_18);
+            if(saveFiles.empty()){
+                iSetColor(255,255,255);
+                iTextBold(200, 300, "No save files",GLUT_BITMAP_HELVETICA_18);
+                return;
+            }
+            for(size_t i = 0; i<saveFiles.size(); ++i){
+                int y = headerY-(i+1)*rowDY;
+                istringstream iss(saveFiles[i]);
+                string f[4];
+                iss >> f[0] >> f[1] >> f[2] >> f[3];
+                iSetColor(0,0,0);
+                for (int c = 0; c < 4; ++c)
+                    iText(colX[c], y, f[c].c_str());
+            }
+        }
+        else if(screen==6){
+            iClear();
+            iSetTransparentColor(0, 0, 0, 0.15);
+            if(victoryType == 1){
+                iText(250, 400, "Congratulations! You cleared this level.", GLUT_BITMAP_TIMES_ROMAN_24);
+                iText(240, 360, "Do you want to proceed to the next round?",GLUT_BITMAP_HELVETICA_18);
+                iRectangle(260, 300, 200, 40); // Proceed
+                iText(300, 315, "Proceed");
+                iRectangle(260, 240, 200, 40); // Menu
+                iText(300, 255, "Go to Menu");
+            }
+            else if(victoryType == 2){
+                iText(250, 400, "Congratulations! You completed this mode!", GLUT_BITMAP_TIMES_ROMAN_24);
+                iRectangle(260, 300, 200, 40); // Try again
+                iText(290, 315, "Try Game Again");
+                iRectangle(260, 240, 200, 40); // Menu
+                iText(300, 255, "Go to Menu");
+            }
+        }
+    }
+    else if(screenCount ==2){
+        // Code for the third screen, high scores screen
+        iClear();
+        iShowLoadedImage(-50, -30, &bg_7);
+        iSetTransparentColor(147, 213, 230, 0.2);
+        iFilledRectangle(0, 0, 500, 650);
+        listSaveFiles();
+        iSetColor(55, 74, 66);
+        curv_border(75, 150, 350, 400, 14);
+        iSetColor(154, 204, 237);
+        curv(75, 150, 350, 400, 14);
+        iSetColor(255, 255, 255);
+        iFilledCircle(421, 548, 17);
+        if(!cross){
+            iSetColor(255, 0, 0);
+            iFilledCircle(421, 548, 15);
+            iSetColor(255, 255, 255);
+        }
+        else{
+            iSetColor(176, 147, 144);
+            iFilledCircle(421, 548, 15);
+            iSetColor(28, 10, 6);
+        }
+        iTextBold(415, 542.25, "X",GLUT_BITMAP_HELVETICA_18);
+        if(score_screen==0){
+            iSetColor(71, 122, 102);
+            curv_border(197, 359, 110, 42, 14);
+            iSetColor(12, 25, 31);
+            curv(198, 360, 108, 40, 14);
+            iSetColor(71, 122, 102);
+            curv_border(197, 299, 110, 42, 14);
+            iSetColor(12, 25, 31);
+            curv(198, 300, 108, 40, 14);
+            iSetColor(186, 216, 230);
+            iTextBold(207, 374, "Time Rush",GLUT_BITMAP_HELVETICA_18);
+            iTextBold(204, 314, "Space Blast",GLUT_BITMAP_HELVETICA_18);
+        }
+        else if (score_screen == 1){
+        int y = 500;
+            for (auto &s : highScores){
+                char line[100];
+                sprintf(line, "%s - Combo: %d, Time: %ds", s.name.c_str(), s.combo, s.time);
+                iText(100, y, line);
+                y -= 30;
+            }
+        }
+        else if(score_screen == 2){
+            int y = 500;
+            for (auto &s : highScores){
+                char line[100];
+                sprintf(line, "%s - Time: %ds", s.name.c_str(), s.time);
+                iText(100, y, line);
+                y -= 30;
+            }
         }
     }
     else if(screenCount ==3)
@@ -1216,76 +1475,76 @@ void iDraw()
             iFilledCircle(406, 435, 15);
             iSetColor(255, 255, 255);
         }
-        iTextBold(400, 429, "X", GLUT_BITMAP_HELVETICA_18); 
+        iTextBold(400, 429, "X",GLUT_BITMAP_HELVETICA_18);
         iSetColor(55, 74, 66);
         curv_border(232, 357, 166, 40, 14);
         iSetColor(154, 204, 237);
-        curv(232, 357, 166, 40, 14); 
+        curv(232, 357, 166, 40, 14);
         if(volume ==1){
             iSetColor(42, 54, 53);
-            iTextBold(239, 370, "Low", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(239, 370, "Low",GLUT_BITMAP_HELVETICA_18);
             iSetColor(255, 255, 255);
-            curv_border(288, 356, 55, 40, 13); 
+            curv_border(288, 356, 55, 40, 13);
             iSetColor(42, 54, 53);
-            curv(288, 356, 55, 40, 13); 
+            curv(288, 356, 55, 40, 13);
             iSetColor(220, 247, 235);
-            iTextBold(298, 370, "Mid", GLUT_BITMAP_HELVETICA_18);
+            iTextBold(298, 370, "Mid",GLUT_BITMAP_HELVETICA_18);
             iSetColor(42, 54, 53);
-            iTextBold(352, 370, "High", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(352, 370, "High",GLUT_BITMAP_HELVETICA_18);
         }
         else if(volume ==0)
         {
             iSetColor(220, 247, 235);
-            curv_border(232, 356, 55, 40, 13); 
+            curv_border(232, 356, 55, 40, 13);
             iSetColor(42, 54, 53);
-            curv(232, 356, 55, 40, 13); 
+            curv(232, 356, 55, 40, 13);
             iSetColor(203, 242, 234);
-            iTextBold(242, 370, "Low", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(242, 370, "Low",GLUT_BITMAP_HELVETICA_18);
             iSetColor(42, 54, 53);
-            iTextBold(298, 370, "Mid", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(298, 370, "Mid",GLUT_BITMAP_HELVETICA_18);
             iSetColor(42, 54, 53);
-            iTextBold(352, 370, "High", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(352, 370, "High",GLUT_BITMAP_HELVETICA_18);
         }
         else if(volume ==2)
         {
             iSetColor(42, 54, 53);
-            iTextBold(239, 370, "Low", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(239, 370, "Low",GLUT_BITMAP_HELVETICA_18);
             iSetColor(42, 54, 53);
-            iTextBold(298, 370, "Mid", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(298, 370, "Mid",GLUT_BITMAP_HELVETICA_18);
             iSetColor(220, 247, 235);
             curv_border(344, 356, 55, 40, 13);
             iSetColor(42, 54, 53);
-            curv(344, 356, 55, 40, 13); 
+            curv(344, 356, 55, 40, 13);
             iSetColor(203, 242, 234);
-            iTextBold(355, 370, "High", GLUT_BITMAP_HELVETICA_18); 
-        }        
+            iTextBold(355, 370, "High",GLUT_BITMAP_HELVETICA_18);
+        }
         iSetColor(55, 74, 66);
-        curv_border(232, 285, 168, 40, 13); 
+        curv_border(232, 285, 168, 40, 13);
         iSetColor(154, 204, 237);
-        curv(232, 285, 168, 40, 13); 
+        curv(232, 285, 168, 40, 13);
 
         if(music_vol ==0)
-        {          
+        {
             iSetColor(42, 54, 53);
-            iTextBold(260, 299, "On", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(260, 299, "On",GLUT_BITMAP_HELVETICA_18);
             iSetColor(220, 247, 235);
-            curv_border(314, 285, 84, 40, 13); // 
+            curv_border(314, 285, 84, 40, 13); //
             iSetColor(42, 54, 53);
-            curv(314, 285, 84, 40, 13); // 
+            curv(314, 285, 84, 40, 13); //
             iSetColor(203, 242, 234);
-            iTextBold(339, 299, "Off", GLUT_BITMAP_HELVETICA_18); 
-            // PlaySound(0,0,0); 
+            iTextBold(339, 299, "Off",GLUT_BITMAP_HELVETICA_18);
+            // PlaySound(0,0,0);
         }
         else if(music_vol ==1)
         {
             iSetColor(220, 247, 235);
-            curv_border(232, 285, 84, 40, 13); 
+            curv_border(232, 285, 84, 40, 13);
             iSetColor(42, 54, 53);
-            curv(232, 285, 84, 40, 13); 
+            curv(232, 285, 84, 40, 13);
             iSetColor(203, 242, 234);
-            iTextBold(260, 299, "On", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(260, 299, "On",GLUT_BITMAP_HELVETICA_18);
             iSetColor(42, 54, 53);
-            iTextBold(339, 299, "Off", GLUT_BITMAP_HELVETICA_18); 
+            iTextBold(339, 299, "Off",GLUT_BITMAP_HELVETICA_18);
         }
     }
     else if(screenCount ==4)
@@ -1305,13 +1564,13 @@ void iDraw()
             iFilledCircle(404, 400, 17.5);
             iSetColor(31, 16, 14);
         }
-        iTextBold(398, 395.2, "X", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(398, 395.2, "X",GLUT_BITMAP_HELVETICA_18);
     }
     else if(screenCount ==5)
     {
         // Code for the sixth screen,  game over screen
         iClear();
-        iShowImage(-100, -110, "assets/images/bg00.jpg");
+        iShowImage(-110, -100, "assets/images/bg00.jpg");
         iSetColor(255, 255, 255);
         iTextBold(180, 500, "Game Over", GLUT_BITMAP_TIMES_ROMAN_24);
         if (!gameOverState) {
@@ -1333,23 +1592,19 @@ void iDraw()
         iSetColor(255,255,255);
         iTextBold(150, 255, "Back To Menu", GLUT_BITMAP_TIMES_ROMAN_24);
     }
-    else if(screenCount ==6)
-    {
-        // Code for the seventh screen,  victory screen
-    }
     else if(screenCount ==7)
     {
         // Code for the eighth screen,  help screen
         iClear();
         iShowLoadedImage(-50, -30, &bg_7);
         iSetTransparentColor(147, 213, 230, 0.5);
-        iFilledRectangle(0, 0, 500, 650); 
+        iFilledRectangle(0, 0, 500, 650);
         iSetColor(204, 163, 131);
-        curv_border(30, 205, 433, 281, 10); 
+        curv_border(30, 205, 433, 281, 10);
         iSetColor(168, 108, 77);
-        curv(30, 205, 433, 281, 10); 
+        curv(30, 205, 433, 281, 10);
         iSetColor(77, 34, 29);
-        iFilledCircle(460, 484, 16); 
+        iFilledCircle(460, 484, 16);
         if(!cross){
             iSetColor(255, 0, 0);
             iFilledCircle(460, 484, 15);
@@ -1360,30 +1615,30 @@ void iDraw()
             iFilledCircle(460, 484, 15);
             iSetColor(31, 16, 14);
         }
-        iTextBold(453.8, 478, "X", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(453.8, 478, "X",GLUT_BITMAP_HELVETICA_18);
         iSetColor(157, 177, 224);
         curv_border(41, 219.5, 412, 201, 10);
         iSetColor(23, 35, 64);
-        curv(41, 219.5, 412, 201, 10); 
+        curv(41, 219.5, 412, 201, 10);
         iSetColor(157, 177, 224);
-        iFilledEllipse(235, 449, 100, 20); 
+        iFilledEllipse(235, 449, 100, 20);
         iSetColor(23, 35, 64);
-        iFilledEllipse(234, 450, 100, 20); 
+        iFilledEllipse(234, 450, 100, 20);
         iSetColor(255, 255, 255);
-        iTextBold(170, 442, "How To Play", GLUT_BITMAP_TIMES_ROMAN_24);       
-        iTextBold(50, 399.3, "1. Click on 'New Game' to start a new game.", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 369.3, "2. Click on 'Load Game' to load a saved game.", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 339.3, "3. Click on 'Settings' to change game settings.", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 309.3, "4. Click on 'Exit' to close the game.", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 279.3, "5. Click on '?' for help or instructions.", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 249.3, "6. Click on 'About Us' to know about the", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 223.9, "    game developers.", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(170, 442, "How To Play", GLUT_BITMAP_TIMES_ROMAN_24);
+        iTextBold(50, 399.3, "1. Click on 'New Game' to start a new game.",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 369.3, "2. Click on 'Load Game' to load a saved game.",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 339.3, "3. Click on 'Settings' to change game settings.",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 309.3, "4. Click on 'Exit' to close the game.",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 279.3, "5. Click on '?' for help or instructions.",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 249.3, "6. Click on 'About Us' to know about the",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 223.9, "    game developers.",GLUT_BITMAP_HELVETICA_18);
     }
     else if(screenCount ==8){
         iClear();
         iShowLoadedImage(-50, -30, &bg_7);
         iSetTransparentColor(147, 213, 230, 0.5);
-        iFilledRectangle(0, 0, 500, 650); 
+        iFilledRectangle(0, 0, 500, 650);
         iSetColor(32, 59, 97);
         curv_border(30, 185, 433, 321, 10);
         iSetColor(139, 190, 232);
@@ -1400,7 +1655,7 @@ void iDraw()
             iFilledCircle(460, 504, 15);
             iSetColor(31, 16, 14);
         }
-        iTextBold(453.8, 498, "X", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(453.8, 498, "X",GLUT_BITMAP_HELVETICA_18);
         iSetColor(245, 207, 169);
         curv_border(182, 490, 130, 40, 10);
         iSetColor(133, 98, 80);
@@ -1408,20 +1663,20 @@ void iDraw()
         iSetColor(230, 207, 195);
         iTextBold(200, 500, "About Us", GLUT_BITMAP_TIMES_ROMAN_24);
         iSetColor(39, 68, 87);
-        iTextBold(50, 450, "Version 1.0.0", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 420, "Developed by:", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 380, "1. Siam Rafsan Prionto (BUET CSE-24)", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 350, "2. Kazi Fahin Abraz (BUET CSE-24)", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 310, "This is still a work in progress", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 280, "and more features will be added over the years.", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 240, "Thank you for trying it out!", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 450, "Version 1.0.0",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 420, "Developed by:",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 380, "1. Siam Rafsan Prionto (BUET CSE-24)",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 350, "2. Kazi Fahin Abraz (BUET CSE-24)",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 310, "This is still a work in progress",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 280, "and more features will be added over the years.",GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 240, "Thank you for trying it out!",GLUT_BITMAP_HELVETICA_18);
         iSetColor(255, 255, 255);
         iCircle(53, 206, 6);
         iSetColor(39, 68, 87);
-        iTextBold(50, 203, "c", GLUT_BITMAP_HELVETICA_12); 
-        iTextBold(62, 200, "Copyright to the owners", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 203, "c", GLUT_BITMAP_HELVETICA_12);
+        iTextBold(62, 200, "Copyright to the owners",GLUT_BITMAP_HELVETICA_18);
     }
-    else if(screenCount==99){
+    else if(screenCount==9){
         
     }
     if(shouldStartMuse)
@@ -1455,11 +1710,10 @@ void iDraw()
     }
     static time_t lastHoverSound = 0;
     if (hovered && difftime(time(0), lastHoverSound) >= 0.2) {
-        iPlaySound("assets/sounds/click.wav", false, 10);
+        iPlaySound("assets/sounds/click.wav", false, 4);
         lastHoverSound = time(0);
+        hovered = false;
     }
-    hovered = false;
-    
 }
 
 /*
@@ -1468,6 +1722,7 @@ function iMouseMove() is called when the user moves the mouse.
 */
 void iMouseMove(int mx, int my)
 {
+
     // place your codes here
     combo_hove = option_hove = time_hove = 0;
     cross= back= proceed= 0;
@@ -1476,7 +1731,7 @@ void iMouseMove(int mx, int my)
         mouse_y = my-50;
         if(mouse_y<=5) mouse_y=5;
         mouse_r = sqrt(mouse_x*mouse_x+mouse_y*mouse_y);
-        if(mouse_r>ball_radius) mouse_r = ball_radius;
+        //if(mouse_r>ball_radius) mouse_r = ball_radius;
         if(mx >= 5 && mx <= 78 && my >= 20 && my <= 40) {
             combo_hove = 1;
             hovered = true;
@@ -1495,19 +1750,19 @@ void iMouseMove(int mx, int my)
     }
     else if(screenCount==1){
         if(screen==1){
-            if((mx-387)*(mx-387)+(my-420)*(my-420)<=256) 
+            if((mx-387)*(mx-387)+(my-420)*(my-420)<=256)
             {
                 cross =1;
                 hovered = true;
             }
             else cross =0;
-            if(mx>=98 && mx<=236 && my>=232 && my<=268) 
+            if(mx>=98 && mx<=236 && my>=232 && my<=268)
             {
                 back =1;
                 hovered = true;
             }
             else back =0;
-            if(mx>=254 && mx<=392 && my>=232 && my<=268) 
+            if(mx>=254 && mx<=392 && my>=232 && my<=268)
             {
                 proceed =1;
                 hovered = true;
@@ -1516,50 +1771,50 @@ void iMouseMove(int mx, int my)
         }
         else if(screen==4){
             if(mx >=264 && mx <=433 && my >=207 && my <=255) {
-                submode_hover =2; 
+                submode_hover =2;
             }
             else if(mx >=68 && mx <=234 && my >=207 && my <=253) {
-                submode_hover =1; 
+                submode_hover =1;
             }
             else if(mx >=71 && mx <=229 && my >=127 && my <=175) {
-                submode_hover =3; 
+                submode_hover =3;
             }
             else if(mx >=254 && mx <=410 && my >=127 && my <=173) {
-                submode_hover =4; 
+                submode_hover =4;
             }
             else submode_hover =0;
             if(mx >=110 && mx <=369 && my >=413 && my <=454) {
-                mode_hover =1; 
+                mode_hover =1;
             }
             else if(mx >=110 && mx <=369 && my >=345 && my <=386) {
-                mode_hover =2; 
+                mode_hover =2;
             }
             else mode_hover =0;
             if(mx >=245 && mx <=355 && my >=52 && my <=82) {
-                proceed =1; 
+                proceed =1;
                 hovered = true;
             }
             else proceed =0;
             if(mx >=122 && mx <=232 && my >=52 && my <=82) {
-                back =1; 
+                back =1;
                 hovered = true;
             }
             else back =0;
         }
         else if(screen==3){
-            if((mx-387)*(mx-387)+(my-420)*(my-420)<=256) 
+            if((mx-387)*(mx-387)+(my-420)*(my-420)<=256)
             {
                 cross =1;
                 hovered = true;
             }
             else cross =0;
-            if(mx>=254 && mx<=392 && my>=230 && my<=268) 
+            if(mx>=254 && mx<=392 && my>=230 && my<=268)
             {
                 proceed =1;
                 hovered = true;
             }
             else proceed =0;
-            if(mx>=108 && mx<=226 && my>=230 && my<=268) 
+            if(mx>=108 && mx<=226 && my>=230 && my<=268)
             {
                 back =1;
                 hovered = true;
@@ -1598,7 +1853,7 @@ void iMouseMove(int mx, int my)
                     hovered=true;
                 }
                 else settin=0;
-                if((mx-398)*(mx-398)+(my-497)*(my-497)<=256) 
+                if((mx-398)*(mx-398)+(my-497)*(my-497)<=256)
                 {
                     cross =1;
                     hovered = true;
@@ -1644,7 +1899,7 @@ void iMouseMove(int mx, int my)
         else settings=0;
     }
     else if(screenCount==8){
-        if((mx-460)*(mx-460)+(my-504)*(my-504)<=225) 
+        if((mx-460)*(mx-460)+(my-504)*(my-504)<=225)
         {
             cross =1;
             hovered = true;
@@ -1662,7 +1917,7 @@ void iMouseMove(int mx, int my)
     }
     else if(screenCount==3)
     {
-        if ((mx - 406)*(mx - 406) + (my - 435)*(my - 435) <=225) 
+        if ((mx - 406)*(mx - 406) + (my - 435)*(my - 435) <=225)
         {
             cross =1;
             hovered = true;
@@ -1671,14 +1926,22 @@ void iMouseMove(int mx, int my)
     }
     else if(screenCount==4)
     {
-        if((mx-404)*(mx-404)+(my-400)*(my-400)<=289) 
+        if((mx-404)*(mx-404)+(my-400)*(my-400)<=289)
         {
             cross =1;
             hovered = true;
         }
         else cross =0;
     }
-    
+    else if(screenCount==2)
+    {
+        if((mx-421)*(mx-421)+(my-548)*(my-548)<=289)
+        {
+            cross =1;
+            hovered = true;
+        }
+        else cross =0;
+    }
 }
 
 /*
@@ -1700,37 +1963,38 @@ void iMouse(int button, int state, int mx, int my)
     {
         // place your codes here
         cout<<mx<<my<<screenCount<<endl;
-        iPlaySound("assets/sounds/click.wav", false, 30);
+        iPlaySound("assets/sounds/click.wav", false, 10);
         if(screenCount==0)
         {
-            if((mx-483)*(mx-483)+(my-634)*(my-634)<=225) 
+            if((mx-483)*(mx-483)+(my-634)*(my-634)<=225)
             {
-                screenCount =7; 
+                screenCount =7;
                 proceed=0;
             }
-            else if(mx >=155 && mx <=333 && my >=417 && my <=457) 
+            else if(mx >=155 && mx <=333 && my >=417 && my <=457)
             {
-                screenCount =1; 
+                screenCount =1;
                 screen =1;
                 in_menu =1, in_game =0;
                 updateMusic();
                 proceed=0;
             }
-            else if(mx >=155 && mx <=333 && my >=346 && my <=391) 
+            else if(mx >=155 && mx <=333 && my >=346 && my <=391)
             {
-                
-            }
-            else if(mx >=155 && mx <=333 && my >=274 && my <=318) 
-            {
-                screenCount =3; 
+                screenCount =2;
                 proceed=0;
             }
-            else if(mx >=155 && mx <=333 && my >=203 && my <=251) 
+            else if(mx >=155 && mx <=333 && my >=274 && my <=318)
             {
-                screenCount =4; 
+                screenCount =3;
                 proceed=0;
             }
-            else if(mx >=420 && mx <=490 && my >=10 && my <=30) 
+            else if(mx >=155 && mx <=333 && my >=203 && my <=251)
+            {
+                screenCount =4;
+                proceed=0;
+            }
+            else if(mx >=420 && mx <=490 && my >=10 && my <=30)
             {
                 screenCount =8;
                 proceed=0;
@@ -1741,14 +2005,14 @@ void iMouse(int button, int state, int mx, int my)
             // Code for play game screen
             if(screen==1){
                 in_game=1, in_menu=0;
-                if((mx-387)*(mx-387)+(my-420)*(my-420)<=256) 
+                if((mx-387)*(mx-387)+(my-420)*(my-420)<=256)
                 {
-                    screenCount=0; 
-                    in_game=0, in_menu=1;  
+                    screenCount=0;
+                    in_game=0, in_menu=1;
                     proceed=0;
-                    updateMusic();                  
+                    updateMusic();
                 }
-                else if(mx>=99 && mx<=235 && my>=236 && my<=265) 
+                else if(mx>=99 && mx<=235 && my>=236 && my<=265)
                 {
                     screen=3;
                     updateMusic();
@@ -1757,7 +2021,15 @@ void iMouse(int button, int state, int mx, int my)
                     name_taken = 0;
                     proceed=0;
                 }
-            }     
+                else if (mx>=254 && mx<=392 && my>=236 && my<=265){ // VETERAN
+                    screen = 5;
+                    updateMusic();
+                    playerName[0] = '\0';
+                    nameLength = 0;
+                    name_taken = 0;
+                    proceed=0;
+                }
+            }
             else if(screen==3){
                 if(mx >=108 && mx <=126 && my >=230 && my <=268){
                     screen=1;
@@ -1779,9 +2051,9 @@ void iMouse(int button, int state, int mx, int my)
                         updateMusic();
                     }
                 }
-                else if((mx-389)*(mx-389)+(my-423)*(my-423)<=256) 
+                else if((mx-389)*(mx-389)+(my-423)*(my-423)<=256)
                 {
-                    screenCount =1, screen=1; 
+                    screenCount =1, screen=1;
                     proceed=0;
                     in_game=0, in_menu=1;
                     shouldStartMuse =true;
@@ -1790,7 +2062,7 @@ void iMouse(int button, int state, int mx, int my)
             }
             else if(screen==4){
                 if(mx >=264 && mx <=433 && my >=207 && my <=255) {
-                    subModeSelect =2; 
+                    subModeSelect =2;
                 }
                 else if(mx >=68 && mx <=233 && my >=207 && my <=255) {
                     subModeSelect =1; // Box
@@ -1812,7 +2084,7 @@ void iMouse(int button, int state, int mx, int my)
                 else if(mx>=110 && mx<=369 && my>=345 && my<=386){
                     gameModeValue =2; // Space Blast
                 }
-                else if(mx>=244 && mx<=367 && my>=62 && my<=90){
+                else if(mx>=170 && mx<=367 && my>=62 && my<=90){
                     if(gameModeValue!=0 && subModeSelect==0){
                         showSubModeWarning = true;
                         return;
@@ -1852,28 +2124,35 @@ void iMouse(int button, int state, int mx, int my)
 
             }
             else if(screen==2){
-                if(mx>=423 && mx<=496 && my>=20 && my<=41){
-                    option_screen=1; //option e click er porer screen er jnno
-                    pauseStartTime = time(0);
-                    gamePaused = true;
+                if(option_screen==0){
+                    if(my>50 && my<=650){
+                        if(throw_ball==0)
+                            combo=0;
+                        setBall();
+                    }
+                    else if(mx>=423 && mx<=496 && my>=20 && my<=41){
+                        option_screen=1; //option e click er porer screen er jnno
+                        pauseStartTime = time(0);
+                        gamePaused = true;
+                    }
                 }
-                if(option_screen==1){
-                    if (mx >= 151 && mx <= 349) {
-                        if (my >= 461 && my <= 490) { // Resume
-                            if (pauseStartTime != 0) {
+                else if(option_screen==1){
+                    if(mx >= 151 && mx <= 349){
+                        if(my >= 461 && my <= 490){ // Resume
+                            if(pauseStartTime != 0){
                                 pauseDuration += (time(0) - pauseStartTime);
                                 pauseStartTime = 0;
                             }
                             gamePaused = false;
                             option_screen = 0;
-                        } 
+                        }
                         else if (my >= 421 && my <= 450) { // Restart
                             fillwithpattern(subModeSelect);
                             gameStartTime = time(0);
                             option_screen = 0;
                             pauseDuration=0;
                             gamePaused = false;
-                        } 
+                        }
                         else if (my >= 381 && my <= 410) { // Back to Menu
                             screenCount = 0;
                             option_screen = 0;
@@ -1885,7 +2164,7 @@ void iMouse(int button, int state, int mx, int my)
                             name_taken = false;
                             savePrompt = 1;
                             saveAction = 1;
-                        } 
+                        }
                         else if (my >= 341 && my <= 370) { // Back to Status
                             screenCount=1, screen=1;
                             option_screen = 0;
@@ -1898,7 +2177,7 @@ void iMouse(int button, int state, int mx, int my)
                             name_taken = false;
                             savePrompt = 1;
                             saveAction = 2;
-                        } 
+                        }
                         else if (my >= 301 && my <= 330) { // Back to Choices
                             screenCount = 1, screen=4;
                             option_screen = 0;
@@ -1913,36 +2192,99 @@ void iMouse(int button, int state, int mx, int my)
                             }
                             updateMusic();
                             savePrompt = 1;
-                            saveAction = 3;
-                        } 
+                            saveAction = 1;
+                        }
                         else if (my >= 261 && my <= 291) { // Settings
                             screenCount = 1, screen=2;
-                            option_screen = 2; 
-                        }      
-                        else if (my >= 220 && my <= 250) {
-                            saveGameState();
+                            option_screen = 2;
                         }
-                    }    
+                        else if (my >= 220 && my <= 250) { // Save Game button
+                            option_screen = 3;
+                            savePrompt = 1;
+                            saveAction=1;
+                            pauseStartTime = time(0);
+                            gamePaused = true;
+                        }
+                    }
                     else if((mx-398)*(mx-398)+(my-497)*(my-497)<=256){
-                        screenCount = 1, screen=2; 
+                        screenCount = 1, screen=2;
+                        cross =1;
+                        hovered = true;
                         option_screen = 0;
                         shouldStartMuse =true;
                         updateMusic();
-                        if (pauseStartTime != 0) {
+                        if (pauseStartTime != 0){
                             pauseDuration += (time(0) - pauseStartTime);
                             pauseStartTime = 0;
                         }
                         gamePaused = false;
-                    }                
+                    }
                 }
                 else if(option_screen==2){
 
                 }
+                else if(option_screen==3){
+                    if(mx >= 160 && mx <= 240 && my >= 320 && my <= 350){
+                        saveGameState();
+                        option_screen = 0;
+                    }
+                    else if(mx >= 260 && mx <= 340 && my >= 320 && my <= 350){
+                        option_screen = 0;
+                    }
+                }
+            }
+            else if(screen==5){
+                size_t idx = (600 - my) / 30;
+                if (idx >= 0 && idx < saveFiles.size()){
+                    if (idx == 0 && saveFiles[0].find("Time Rush") != string::npos)
+                        loadGameState("save/time.txt");
+                    else if (saveFiles[idx].find("Space Blast") != string::npos)
+                        loadGameState("save/space.txt");
+                    screen = 2;
+                    option_screen = 0;
+                }
+            }
+            else if(screen==6){
+                if(victoryType == 1 && mx >= 260 && mx <= 460 && my >= 300 && my <= 340){
+                    subModeSelect = (subModeSelect + 1) % 4;
+                    if(subModeSelect == 0) subModeSelect = 1;
+                    fillwithpattern(subModeSelect);
+                    gameStartTime = time(0);
+                    pauseDuration = 0;
+                    option_screen = 0;
+                    gamePaused = false;
+                    timeRushActive = true;
+                    screen = 2;
+                    screenCount = 1;
+                }
+                else if (victoryType == 2 && mx >= 260 && mx <= 460 && my >= 300 && my <= 340) {
+                    screen = 4;
+                    screenCount = 1;
+                }
+                else if (mx >= 260 && mx <= 460 && my >= 240 && my <= 280) {
+                    screen = 0;
+                    screenCount = 1;
+                }
             }
         }
-        else if(screenCount==2)
-        {
+        else if(screenCount==2){
             // Code for high-score screen
+            if((mx-421)*(mx-421)+(my-548)*(my-548)<=289){
+                    screenCount =0;
+            } 
+            if(score_screen == 0){
+                if(mx>=220 && mx<=380 && my>=360 && my<400){
+                    // Try different set
+                    score_screen=1;
+                    loadHighScores(1);
+                }
+                else if(mx>220 && mx<380 && my>=280 && my<320){
+                    // Back to menu
+                    score_screen=2;
+                    loadHighScores(2);
+                }
+            }
+
         }
         else if(screenCount==5)
         {
@@ -1968,85 +2310,72 @@ void iMouse(int button, int state, int mx, int my)
                 shouldStartMuse =true;
                 timeRushActive = false;
                 screenCount =0;
-                updateMusic();
+                updateMusic();  
             }
         }
-        else if(screenCount==6)
-        {
+        else if(screenCount==6){
             // Code for victory screen
         }
-        else if(screenCount==4)
-        {
-            if((mx-404)*(mx-404)+(my-400)*(my-400)<=289) 
-            {
-                screenCount =0; 
-            }
-            else if(mx >=103 && mx <=245 && my >=206 && my <=242) 
-            {
-                exit(0); 
-            }
-            else if(mx >=257 && mx <=391 && my >=204 && my <=242) 
-            {
-                screenCount =0; 
-            }
-        }
-        else if(screenCount==7) 
-        {
-            if((mx-460)*(mx-460)+(my-484)*(my-484)<=225) 
-            {
-                screenCount =0; 
-            }
-        }
-        else if (screenCount ==3) 
-        {
-            if ((mx - 406)*(mx - 406) + (my - 435)*(my - 435) <=225)
-            {
+        else if(screenCount==4){
+            if((mx-404)*(mx-404)+(my-400)*(my-400)<=289){
                 screenCount =0;
             }
-            else if (mx >=236 && mx <=312 && my >=290 && my <=325)
-            {
+            else if(mx >=103 && mx <=245 && my >=206 && my <=242){
+                exit(0);
+            }
+            else if(mx >=257 && mx <=391 && my >=204 && my <=242){
+                screenCount =0;
+            }
+        }
+        else if(screenCount==7){
+            if((mx-460)*(mx-460)+(my-484)*(my-484)<=225){
+                screenCount =0;
+            }
+        }
+        else if (screenCount ==3){
+            if ((mx - 406)*(mx - 406) + (my - 435)*(my - 435) <=225){
+                screenCount =0;
+            }
+            else if (mx >=236 && mx <=312 && my >=290 && my <=325){
                 music_vol =1;
                 musicPaused =true;
                 shouldStartMuse =true;
             }
 
-            else if (mx >=313 && mx <=400 && my >=288 && my <=331)
-            {
+            else if (mx >=313 && mx <=400 && my >=288 && my <=331){
                 music_vol =0;
                 if (ch !=-1) iPauseSound(ch);
             }
-            else if (mx >=232 && mx <=287 && my >=356 && my <=396)
-            {
+            else if (mx >=232 && mx <=287 && my >=356 && my <=396){
                 volume =0;
                 if (music_vol ==1 && ch !=-1)
                     iSetVolume(ch, 20);
             }
-            else if (mx >=288 && mx <=343 && my >=356 && my <=396)
-            {
+            else if (mx >=288 && mx <=343 && my >=356 && my <=396){
                 volume =1;
                 if (music_vol ==1 && ch !=-1)
                     iSetVolume(ch, 40);
             }
-            else if (mx >=346 && mx <=401 && my >=356 && my <=396)
-            {
+            else if (mx >=346 && mx <=401 && my >=356 && my <=396){
                 volume =2;
                 if (music_vol ==1 && ch !=-1)
-                    iSetVolume(ch, 70); 
+                    iSetVolume(ch, 70);
             }
         }
 
         else if(screenCount ==8)
         {
-            if((mx-460)*(mx-460)+(my-504)*(my-504)<=225) 
+            if((mx-460)*(mx-460)+(my-504)*(my-504)<=225)
             {
-                screenCount =0; 
+                screenCount =0;
             }
         }
+
         proceed=0;
         back=0;
         cross=0;
         new_game=0;
-        high_score=0;   
+        high_score=0;
         settings=0;
         exit_game=0;
         help=0;
@@ -2112,16 +2441,16 @@ void iKeyboard(unsigned char key)
             else if((key=='\r' || key=='\n') && subModeSelect>0 && nameLength>0)
             { // Enter key
                 iPlaySound("assets/sounds/click.wav", false, 20);
-                printf("Name confirmed: %s\n", playerName); 
+                printf("Name confirmed: %s\n", playerName);
                 name_taken = true;
                 screen = 2;
                 showWarning = false;
                 shouldStartMuse = true;
-                updateMusic();                
+                updateMusic();
             }
-            else if((key>='a' && key<='z') || 
-                    (key>='A' && key<='Z') || 
-                    (key>='0' && key<='9') || 
+            else if((key>='a' && key<='z') ||
+                    (key>='A' && key<='Z') ||
+                    (key>='0' && key<='9') ||
                     key=='_')
             {
                 iPlaySound("assets/sounds/music_game.wav", false, 40);
@@ -2142,7 +2471,7 @@ void iKeyboard(unsigned char key)
                 option_screen = 1; // open options
                 gamePaused = true;
                 pauseStartTime = time(0);
-            } 
+            }
             else{
                 option_screen = 0; // close options
                 pauseDuration += time(0) - pauseStartTime;
@@ -2150,31 +2479,6 @@ void iKeyboard(unsigned char key)
             }
         }
     }
-    if(savePrompt == 1){
-        if(key == 'y' || key == 'Y'){
-            saveGameState();
-            savePrompt = 2;  // Proceed with action
-        }
-        else if(key == 'n' || key == 'N') {
-            savePrompt = 3;  // Proceed without saving
-        }
-        if (savePrompt == 2 || savePrompt == 3) {
-            if (saveAction == 1) {
-                screenCount = 0;
-                screen = 1;
-            } 
-            else if (saveAction == 2) {
-                screen = 4;
-            } 
-            else if (saveAction == 3) {
-                screen = 1;
-            }
-            option_screen = 0;
-            savePrompt = 0;
-            saveAction = 0;
-        }
-    }
-
 }
 
 /*
@@ -2216,7 +2520,7 @@ int main(int argc, char *argv[])
     // place your own initialization codes here.
     iInitializeSound();
     menu_muse=iPlaySound("assets/sounds/music_menu.wav", true, 0);
-    ch=menu_muse; 
+    ch=menu_muse;
     iSetVolume(menu_muse, 0);
     fadingIn=true;
     targetVolume=40;

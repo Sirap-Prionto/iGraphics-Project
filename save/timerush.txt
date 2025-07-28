@@ -1,0 +1,4 @@
+Alice 12 135
+Bob   10 150
+Carol 8  180
+Dave  7  210
