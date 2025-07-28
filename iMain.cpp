@@ -8,6 +8,7 @@ using namespace std;
 /*
 function iDraw() is called again and again by the system.
 */
+int hoveredSaveIdx = -1;
 int score_screen = 0;
 int savePrompt = 0; // 0=no,1=asking,2=confirmed,3=denied
 int saveAction = 0; // 1=menu,2=status,3=modes
@@ -15,8 +16,8 @@ int pauseStartTime = 0;
 int pauseDuration = 0;
 bool gamePaused = false;
 int totalTime = 0;
-int combo_hove = 0, option_hove = 0, time_hove = 0, rush=0, blast=0;
-int resume = 0, restart = 0, instruc= 0, back_men = 0, back_stat = 0, back_choce = 0, sav=0;
+int combo_hove = 0, option_hove = 0, time_hove = 0, rush = 0, blast = 0;
+int resume = 0, restart = 0, instruc = 0, back_men = 0, back_stat = 0, back_choce = 0, sav = 0;
 bool timeRushActive = false;
 int timeRushRound = -1;
 int hoverSoundChannel = -1;
@@ -76,7 +77,7 @@ int getMoveThresholdForSubmode(int mode)
     case 1:
         return 5;
     case 2:
-        return 4; 
+        return 4;
     case 3:
         return 6;
     default:
@@ -107,6 +108,21 @@ int getTextWidth(const char *text)
         width += getCharWidth(text[i]);
     }
     return width;
+}
+struct Bubble { double x,y,speed; };
+static vector<Bubble> transitionBubbles;
+static bool isTransitioning = false;
+static int  pendingScreenCount = -1;
+static int  pendingScreen = -1;
+void startScreenTransition(int newSC, int newS){
+    isTransitioning= true;
+    pendingScreenCount= newSC;
+    pendingScreen= newS;
+    transitionBubbles.clear();
+    for(int i=0;i<100;i++){
+      transitionBubbles.push_back({
+        double(rand()%width), 0.0, double(2 + rand()%3)});
+    }
 }
 struct ScoreEntry
 {
@@ -452,11 +468,11 @@ void resetBall()
     }
     else if (combo >= 5)
     {
-        r = g = b = 255;
+        r = g = b = 63;
     }
     else if (combo >= 4)
     {
-        r = g = b = 63;
+        r = g = b = 256;
     }
 }
 
@@ -915,21 +931,26 @@ void fillwithpattern(int pattern)
 }
 void saveGameState()
 {
-    time_t now = time(0);
-    struct tm *t = localtime(&now);
     const char *filename = (gameModeValue == 1) ? "save/time.txt" : "save/space.txt";
     FILE *fp = fopen(filename, "w");
-    if (!fp)
-        return;
+    if (!fp) return;
     int elapsed = (int)(time(0) - gameStartTime - pauseDuration);
-    const char *modeName = (gameModeValue == 1) ? "TimeRush" : "SpaceBlast";
-    fprintf(fp, "%s %s %02d:%02d %04d-%02d-%02d\n",
-            modeName,
-            playerName,
-            elapsed / 60, elapsed % 60,
-            t->tm_year + 1900,
-            t->tm_mon + 1,
-            t->tm_mday);
+    fprintf(fp, "mode %d\n", gameModeValue);
+    fprintf(fp, "submode %d\n", subModeSelect);
+    fprintf(fp, "time %d\n", elapsed);
+    fprintf(fp, "name %s\n", playerName);
+    fprintf(fp, "combo %d\n", combo);
+    fprintf(fp, "moves %d\n", moves);
+    for(int i = 0; i < 31; ++i){
+        for(int j = 0; j < 25; ++j){
+            auto &b = all_static_balls[i][j];
+            fprintf(fp, "%d %d %d %d\n",
+                    b.exist,
+                    b.red,
+                    b.green,
+                    b.blue);
+        }
+    }
     fclose(fp);
 }
 void loadGameState(const string &filepath)
@@ -947,9 +968,18 @@ void loadGameState(const string &filepath)
     fscanf(fp, "name %[^\n]", playerName);
     fscanf(fp, "combo %d\n", &combo);
     fscanf(fp, "moves %d\n", &moves);
+    for(int i = 0; i < 31; ++i){
+        for(int j = 0; j < 25; ++j){
+            int exist, r, g, b;
+            fscanf(fp, "%d %d %d %d\n", &exist, &r, &g, &b);
+            all_static_balls[i][j].exist = exist;
+            all_static_balls[i][j].red   = r;
+            all_static_balls[i][j].green = g;
+            all_static_balls[i][j].blue  = b;
+        }
+    }
+set_coordinates();
     fclose(fp);
-
-    // restore state
     screen = 2;
     screenCount = 1;
     fillwithpattern(subModeSelect);
@@ -1027,10 +1057,33 @@ void loadHighScores(int mode)
              { return a.time < b.time; });
 }
 
-Image bg_0, bg_3, bg_4, bg_7;
+Image bg_0, bg_3, bg_4, bg_7, bg_00;
 void iDraw()
 {
     // place your drawing codes here
+    if(isTransitioning){
+        iClear();
+        for(auto &b:transitionBubbles){
+        iSetColor(200,220,255);
+        iFilledCircle(b.x,b.y,5);
+        b.y += b.speed;
+        }
+        transitionBubbles.erase(
+        std::remove_if(
+            transitionBubbles.begin(),
+            transitionBubbles.end(),
+            [&](auto &b){ return b.y > height; }
+        ),
+        transitionBubbles.end()
+        );
+        if(transitionBubbles.empty()){
+        isTransitioning = false;
+        screenCount     = pendingScreenCount;
+        screen          = pendingScreen;
+        }
+        return;
+    }
+
     if (screenCount == 0)
     {
         if (music_vol == 1 && ch == -1)
@@ -1155,7 +1208,7 @@ void iDraw()
         else if (screen == 2)
         {
             iClear();
-            iShowImage(-105, -60, "assets/images/bg00.jpg");
+            iShowLoadedImage(-105, -60, &bg_00);
             iSetTransparentColor(147, 213, 230, 0.2);
             iFilledRectangle(0, 0, 500, 650);
             iSetColor(49, 99, 88);
@@ -1271,6 +1324,8 @@ void iDraw()
                 victoryType = 1;
             }
             gameover();
+            if(r==127 && g==127 && b==127) velocity=8;
+            else velocity=16;
             if (throw_ball)
                 drawBall();
 
@@ -1289,7 +1344,7 @@ void iDraw()
             iTextBold(10, 25, cmb, GLUT_BITMAP_8_BY_13);
             if (option_screen == 1)
             {
-                iSetTransparentColor(159, 181, 176, 0.15);
+                iSetTransparentColor(159, 181, 176, 0.25);
                 iFilledRectangle(0, 0, 500, 650);
                 iSetColor(61, 99, 90);
                 curv_border(99, 214, 302, 286, 13);
@@ -1401,12 +1456,14 @@ void iDraw()
                 }
                 iTextBold(204.5, 270, "Instructions", GLUT_BITMAP_HELVETICA_18);
                 curv_border(150, 221, 200, 30, 13);
-                if(sav==0){
+                if (sav == 0)
+                {
                     iSetColor(14, 31, 18);
                     curv(151, 221.6, 198, 28.75, 13);
                     iSetColor(177, 224, 190);
                 }
-                else{
+                else
+                {
                     iSetColor(110, 128, 114);
                     curv(151, 221.6, 198, 28.75, 13);
                     iSetColor(18, 61, 30);
@@ -1415,7 +1472,7 @@ void iDraw()
             }
             else if (option_screen == 2)
             {
-                iSetTransparentColor(159, 181, 176, 0.15);
+                iSetTransparentColor(159, 181, 176, 0.25);
                 iFilledRectangle(0, 0, 500, 650);
                 iSetColor(61, 99, 90);
                 curv_border(56, 191, 390, 332, 13);
@@ -1426,7 +1483,7 @@ void iDraw()
                 if (!cross)
                 {
                     iSetColor(255, 0, 0);
-                    iFilledCircle(446, 518, 17);
+                    iFilledCircle(446, 518, 15);
                     iSetColor(255, 255, 255);
                 }
                 else
@@ -1439,23 +1496,22 @@ void iDraw()
                 iSetColor(61, 99, 90);
                 curv_border(187, 509, 146, 41, 13);
                 iSetColor(190, 237, 237);
-                curv(188,509,144, 39 ,13);
+                curv(188, 509, 144, 39, 13);
                 iSetColor(5, 31, 31);
-                iTextBold(201, 519, "Instructions", GLUT_BITMAP_TIMES_ROMAN_24);
+                iTextBold(201, 521.5, "Instructions", GLUT_BITMAP_TIMES_ROMAN_24);
                 iSetColor(61, 99, 90);
                 curv_border(62, 196, 377, 295, 13);
                 iSetColor(171, 201, 180);
                 curv(63, 197, 375, 293, 13);
                 iSetColor(6, 20, 20);
-                iTextBold(71, 465, "1.Click on the screen to throw the ", GLUT_BITMAP_TIMES_ROMAN_24);
-                iTextBold(71, 433, "   ball in the direction of cannon.", GLUT_BITMAP_TIMES_ROMAN_24);
-                iTextBold(71, 401, "2.Click options for in-game help.", GLUT_BITMAP_TIMES_ROMAN_24);
-                iTextBold(71, 369, "3.Clicking on W will also throw the ", GLUT_BITMAP_TIMES_ROMAN_24);
-                iTextBold(71, 337, "   ball in the direction of cannon.", GLUT_BITMAP_TIMES_ROMAN_24);
-                iTextBold(71, 305, "4.Change cannon position with A/D ", GLUT_BITMAP_TIMES_ROMAN_24);
-                iTextBold(71, 273, "   keys or left/right arrow keys.", GLUT_BITMAP_TIMES_ROMAN_24);
-                iTextBold(71, 241, "5.Complete 3 rounds to complete the ", GLUT_BITMAP_TIMES_ROMAN_24);
-                iTextBold(71, 209, "   full game.", GLUT_BITMAP_TIMES_ROMAN_24);
+                iTextBold(70, 465, "1.Click on the screen or W key to throw the", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(70, 433, "   ball upwards.", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(70, 401, "2.Change cannon position with the mouse", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(70, 369, "   changing its position.", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(70, 337, "3.Complete 3 rounds in time to complete the", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(70, 305, "   full game.", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(70, 273, "4.Higher combos will bring power balls,", GLUT_BITMAP_HELVETICA_18);
+                iTextBold(70, 241, "   which are the Blast ball & Any ball.", GLUT_BITMAP_HELVETICA_18);
             }
             else if (option_screen == 3)
             {
@@ -1483,12 +1539,14 @@ void iDraw()
                 iSetColor(4, 26, 23);
                 iTextBold(173, 390, "Save your game?", GLUT_BITMAP_TIMES_ROMAN_24);
                 curv_border(160, 320, 80, 30, 10);
-                if(proceed==0){
+                if (proceed == 0)
+                {
                     iSetColor(77, 125, 106);
                     curv(161, 321, 78, 28, 10);
                     iSetColor(4, 11, 28);
                 }
-                else{
+                else
+                {
                     iSetColor(4, 11, 28);
                     curv(161, 321, 78, 28, 10);
                     iSetColor(77, 125, 106);
@@ -1496,12 +1554,14 @@ void iDraw()
                 iTextBold(182, 329.6, "Yes", GLUT_BITMAP_HELVETICA_18);
                 iSetColor(36, 8, 13);
                 curv_border(260, 320, 80, 30, 10);
-                if(back==0){
+                if (back == 0)
+                {
                     iSetColor(173, 36, 48);
                     curv(261, 321, 78, 28, 10);
                     iSetColor(247, 213, 216);
                 }
-                else{
+                else
+                {
                     iSetColor(247, 213, 216);
                     curv(261, 321, 78, 28, 10);
                     iSetColor(173, 36, 48);
@@ -1601,27 +1661,27 @@ void iDraw()
             iShowLoadedImage(-110, -120, &sc4);
             in_menu = 1, in_game = 0;
             iSetColor(219, 204, 147);
-            curv_border(257, 202, 165, 58, 13);   //diamond
-            curv_border(252.6, 124, 169, 60, 13); //random
-            curv_border(70, 121, 160, 58, 13);    //pyramid
-            curv_border(68.5, 201, 165, 56, 13);  //box
+            curv_border(257, 202, 165, 58, 13);   // diamond
+            curv_border(252.6, 124, 169, 60, 13); // random
+            curv_border(70, 121, 160, 58, 13);    // pyramid
+            curv_border(68.5, 201, 165, 56, 13);  // box
             if (subModeSelect == 2 || submode_hover == 2)
-                iSetColor(219, 204, 147); //diamond
+                iSetColor(219, 204, 147); // diamond
             else
                 iSetColor(77, 34, 29);
             curv(259, 203.5, 161, 55, 13);
             if (subModeSelect == 1 || submode_hover == 1)
-                iSetColor(219, 204, 147); //box
+                iSetColor(219, 204, 147); // box
             else
                 iSetColor(77, 34, 29);
             curv(69.5, 202, 163, 54, 13);
             if (subModeSelect == 3 || submode_hover == 3)
-                iSetColor(219, 204, 147); //pyramid
+                iSetColor(219, 204, 147); // pyramid
             else
                 iSetColor(77, 34, 29);
             curv(71.5, 122.5, 157, 55, 13);
             if (subModeSelect == 4 || submode_hover == 4)
-                iSetColor(219, 204, 147); //random
+                iSetColor(219, 204, 147); // random
             else
                 iSetColor(77, 34, 29);
             curv(254, 125, 165, 56, 13);
@@ -1708,7 +1768,7 @@ void iDraw()
             iSetColor(189, 215, 217);
             curv(75, 150, 350, 400, 14);
             iSetColor(255, 255, 255);
-            iFilledCircle(422, 548, 17);
+            iFilledCircle(422, 548, 16);
             if (!cross)
             {
                 iSetColor(255, 0, 0);
@@ -1727,7 +1787,7 @@ void iDraw()
             iSetColor(183, 232, 212);
             curv(194, 540, 126, 39, 14);
             iSetColor(9, 28, 20);
-            iTextBold(200, 550, "Load Game", GLUT_BITMAP_TIMES_ROMAN_24);
+            iTextBold(200, 550.8, "Load Game", GLUT_BITMAP_TIMES_ROMAN_24);
             const int colX[] = {90, 180, 260, 335};
             iSetColor(9, 20, 20);
             const char *titles[] = {"Mode", "Name", "Time", "Date"};
@@ -1739,15 +1799,23 @@ void iDraw()
                 iTextBold(200, 280, "No save files", GLUT_BITMAP_HELVETICA_18);
                 return;
             }
-            for (size_t i = 0; i < saveFiles.size(); ++i)
+            for (int i = 0; i < (int)saveFiles.size(); ++i)
             {
-                int y =490-(i+1)*30;
+                int y = 490-i*30;
+                if (i == hoveredSaveIdx)
+                {
+                    iSetColor(15, 36, 28);
+                    curv_border(84.2, y-30-0.8, 336.6, 32.6,6);
+                    iSetColor(200, 230, 200);
+                    curv(85, y-30, 335, 31,6);
+                }
                 istringstream iss(saveFiles[i]);
                 string f[4];
                 iss >> f[0] >> f[1] >> f[2] >> f[3];
                 iSetColor(12, 26, 19);
+                const int colX[] = {90, 180, 260, 335};
                 for (int c = 0; c < 4; ++c)
-                    iTextBold(colX[c], y, f[c].c_str());
+                    iTextBold(colX[c], y-20, f[c].c_str());
             }
         }
         else if (screen == 6)
@@ -1810,12 +1878,14 @@ void iDraw()
         {
             iSetColor(71, 122, 102);
             curv_border(197, 359, 110, 42, 14);
-            if(rush==0){
+            if (rush == 0)
+            {
                 iSetColor(12, 25, 31);
                 curv(198, 360, 108, 40, 14);
                 iSetColor(186, 216, 230);
             }
-            else{
+            else
+            {
                 iSetColor(186, 216, 230);
                 curv(198, 360, 108, 40, 14);
                 iSetColor(12, 25, 31);
@@ -1823,12 +1893,14 @@ void iDraw()
             iTextBold(207, 374, "Time Rush", GLUT_BITMAP_HELVETICA_18);
             iSetColor(71, 122, 102);
             curv_border(197, 299, 110, 42, 14);
-            if(blast==0){
+            if (blast == 0)
+            {
                 iSetColor(12, 25, 31);
                 curv(198, 300, 108, 40, 14);
                 iSetColor(186, 216, 230);
             }
-            else{
+            else
+            {
                 iSetColor(186, 216, 230);
                 curv(198, 300, 108, 40, 14);
                 iSetColor(12, 25, 31);
@@ -1836,8 +1908,8 @@ void iDraw()
             iTextBold(204, 314, "Space Blast", GLUT_BITMAP_HELVETICA_18);
         }
         else if (score_screen == 1)
-        {   
-            int y=430;
+        {
+            int y = 430;
             iSetColor(9, 20, 28);
             curv_border(80, 155, 340, 310, 14);
             iSetColor(167, 201, 189);
@@ -1855,12 +1927,12 @@ void iDraw()
                 char line[100];
                 sprintf(line, "%s - Combo: %d, Time: %ds", s.name.c_str(), s.combo, s.time);
                 iTextBold(100, y, line);
-                y-=30;
+                y -= 30;
             }
         }
         else if (score_screen == 2)
         {
-            int y=500;
+            int y = 500;
             iSetColor(9, 20, 28);
             curv_border(80, 155, 340, 310, 14);
             iSetColor(167, 201, 189);
@@ -1878,7 +1950,7 @@ void iDraw()
                 char line[100];
                 sprintf(line, "%s - Time: %ds", s.name.c_str(), s.time);
                 iTextBold(100, y, line);
-                y-=30;
+                y -= 30;
             }
         }
     }
@@ -1999,24 +2071,22 @@ void iDraw()
     {
         // Code for the sixth screen,  game over screen
         iClear();
-        iShowImage(-110, -100, "assets/images/bg00.jpg");
+        iShowLoadedImage(-110, -100, &bg_00);
         iSetColor(255, 255, 255);
         iTextBold(180, 500, "Game Over", GLUT_BITMAP_TIMES_ROMAN_24);
         if (!gameOverState)
         {
-            saveGameState(); // <-- saves once
+            saveGameState();
             gameOverState = true;
         }
         iSetColor(150, 0, 0);
         curv(120, 400, 260, 50, 15);
         iSetColor(255, 255, 255);
         iTextBold(170, 415, "Retry This Set", GLUT_BITMAP_TIMES_ROMAN_24);
-
         iSetColor(0, 100, 0);
         curv(120, 320, 260, 50, 15);
         iSetColor(255, 255, 255);
         iTextBold(150, 335, "Try Different Set", GLUT_BITMAP_TIMES_ROMAN_24);
-
         iSetColor(0, 0, 150);
         curv(120, 240, 260, 50, 15);
         iSetColor(255, 255, 255);
@@ -2093,21 +2163,21 @@ void iDraw()
         iTextBold(453.8, 498, "X", GLUT_BITMAP_HELVETICA_18);
         iSetColor(245, 207, 169);
         curv_border(182, 490, 130, 40, 10);
-        iSetColor(133, 98, 80);
+        iSetColor(64, 43, 32);
         curv(182, 490, 130, 40, 10);
         iSetColor(230, 207, 195);
         iTextBold(200, 500, "About Us", GLUT_BITMAP_TIMES_ROMAN_24);
-        iSetColor(39, 68, 87);
+        iSetColor(6, 15, 20);
         iTextBold(50, 450, "Version 1.0.0", GLUT_BITMAP_HELVETICA_18);
         iTextBold(50, 420, "Developed by:", GLUT_BITMAP_HELVETICA_18);
         iTextBold(50, 380, "1. Siam Rafsan Prionto (BUET CSE-24)", GLUT_BITMAP_HELVETICA_18);
         iTextBold(50, 350, "2. Kazi Fahin Abraz (BUET CSE-24)", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 310, "This is still a work in progress", GLUT_BITMAP_HELVETICA_18);
-        iTextBold(50, 280, "and more features will be added over the years.", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 310, "This was completed under the supervision of ", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(50, 280, "Abdur Rafi sir, immense thanks to him.", GLUT_BITMAP_HELVETICA_18);
         iTextBold(50, 240, "Thank you for trying it out!", GLUT_BITMAP_HELVETICA_18);
         iSetColor(255, 255, 255);
         iCircle(53, 206, 6);
-        iSetColor(39, 68, 87);
+        iSetColor(6, 15, 20);
         iTextBold(50, 203, "c", GLUT_BITMAP_HELVETICA_12);
         iTextBold(62, 200, "Copyright to the owners", GLUT_BITMAP_HELVETICA_18);
     }
@@ -2327,11 +2397,11 @@ void iMouseMove(int mx, int my)
                     back_choce = 0;
                 if (mx >= 151 && mx <= 349 && my >= 261 && my <= 290)
                 {
-                    instruc= 1;
+                    instruc = 1;
                     hovered = true;
                 }
                 else
-                    instruc= 0;
+                    instruc = 0;
                 if ((mx - 398) * (mx - 398) + (my - 497) * (my - 497) <= 256)
                 {
                     cross = 1;
@@ -2339,16 +2409,17 @@ void iMouseMove(int mx, int my)
                 }
                 else
                     cross = 0;
-                if((mx >= 151 && mx <= 349) && (my >= 221 && my <= 250))
+                if ((mx >= 151 && mx <= 349) && (my >= 221 && my <= 250))
                 {
-                    sav=1;
+                    sav = 1;
                     hovered = true;
                 }
                 else
-                    sav =0;
+                    sav = 0;
             }
-            else if(option_screen==2){
-                if((mx-446)*(mx-446)+(my-518)*(my-518)<=225)
+            else if (option_screen == 2)
+            {
+                if ((mx - 446) * (mx - 446) + (my - 518) * (my - 518) <= 225)
                 {
                     cross = 1;
                     hovered = true;
@@ -2356,20 +2427,23 @@ void iMouseMove(int mx, int my)
                 else
                     cross = 0;
             }
-            else if(option_screen==3){
-                if(mx>=161 && mx<=239 && my>=321 && my<=350){
+            else if (option_screen == 3)
+            {
+                if (mx >= 161 && mx <= 239 && my >= 321 && my <= 350)
+                {
                     proceed = 1;
                     hovered = true;
                 }
                 else
                     proceed = 0;
-                if(mx>=261 && mx<=339 && my>=321 && my<=350){
+                if (mx >= 261 && mx <= 339 && my >= 321 && my <= 350)
+                {
                     back = 1;
                     hovered = true;
                 }
                 else
                     back = 0;
-                if((mx-364)*(mx-364)+(my-432)*(my-432)<=225)
+                if ((mx - 364) * (mx - 364) + (my - 432) * (my - 432) <= 225)
                 {
                     cross = 1;
                     hovered = true;
@@ -2378,8 +2452,24 @@ void iMouseMove(int mx, int my)
                     cross = 0;
             }
         }
-        else if(screen==5){
-            if((mx-422)*(mx-422)+(my-548)*(my-548)<=289)
+        else if (screen == 5)
+        {
+            hoveredSaveIdx = -1;
+            const int startY = 490;
+            const int rowH = 30;
+            const int leftX = 90;
+            const int rightX = 420; // tweak to cover full row width
+            for (int i = 0; i < (int)saveFiles.size(); ++i)
+            {
+                int rowTop = startY - i * rowH;
+                int rowBot = rowTop - rowH;
+                if (mx >= leftX && mx <= rightX && my >= rowBot && my <= rowTop)
+                {
+                    hoveredSaveIdx = i;
+                    break;
+                }
+            }
+            if ((mx - 422) * (mx - 422) + (my - 548) * (my - 548) <= 289)
             {
                 cross = 1;
                 hovered = true;
@@ -2486,16 +2576,17 @@ void iMouseMove(int mx, int my)
         }
         else
             cross = 0;
-        if(option_screen==0){
-            if(mx >= 198 && mx <= 308 && my >= 360 && my <= 400)
+        if (option_screen == 0)
+        {
+            if (mx >= 198 && mx <= 308 && my >= 360 && my <= 400)
             {
                 rush = 1;
                 hovered = true;
             }
             else
                 rush = 0;
-            if(mx >= 198 && mx <= 308 && my >= 300 && my <= 340)
-            {                
+            if (mx >= 198 && mx <= 308 && my >= 300 && my <= 340)
+            {
                 blast = 1;
                 hovered = true;
             }
@@ -2503,7 +2594,6 @@ void iMouseMove(int mx, int my)
                 blast = 0;
         }
     }
-
 }
 
 /*
@@ -2535,9 +2625,9 @@ void iMouse(int button, int state, int mx, int my)
             }
             else if (mx >= 155 && mx <= 333 && my >= 417 && my <= 457)
             {
-                screenCount = 1;
-                screen = 1;
-                in_menu = 1, in_game = 0;
+                startScreenTransition(1,1);
+                in_menu     = 1;
+                in_game     = 0;
                 updateMusic();
                 proceed = 0;
             }
@@ -2825,7 +2915,7 @@ void iMouse(int button, int state, int mx, int my)
                 }
                 else if (option_screen == 2)
                 {
-                    if((mx-440)*(mx-440)+(my-513)*(my-513)<=225)
+                    if ((mx - 440) * (mx - 440) + (my - 513) * (my - 513) <= 225)
                     {
                         screenCount = 1, screen = 2;
                         option_screen = 1;
@@ -2842,28 +2932,28 @@ void iMouse(int button, int state, int mx, int my)
                     {
                         option_screen = 1;
                     }
-                    else if((mx - 364)*(mx - 364) + (my - 432)*(my - 432) <= 225)
+                    else if ((mx - 364) * (mx - 364) + (my - 432) * (my - 432) <= 225)
                     {
                         option_screen = 1;
                     }
                 }
             }
             else if (screen == 5)
-            {   
+            {
                 if ((mx - 422) * (mx - 422) + (my - 548) * (my - 548) <= 289)
                 {
                     screenCount = 1, screen = 1;
                     updateMusic();
                 }
-                size_t idx = (600 - my) / 30;
-                if (idx >= 0 && idx < saveFiles.size())
+                else if (hoveredSaveIdx >= 0)
                 {
-                    if (idx == 0 && saveFiles[0].find("Time Rush") != string::npos)
+                    if (saveFiles[hoveredSaveIdx].find("TimeRush") != string::npos)
                         loadGameState("save/time.txt");
-                    else if (saveFiles[idx].find("Space Blast") != string::npos)
+                    else if (saveFiles[hoveredSaveIdx].find("SpaceBlast") != string::npos)
                         loadGameState("save/space.txt");
                     screen = 2;
                     option_screen = 0;
+                    hoveredSaveIdx = -1;
                 }
             }
             else if (screen == 6)
@@ -3035,7 +3125,7 @@ void iMouse(int button, int state, int mx, int my)
         about_us = 0;
         mode_hover = 0;
         submode_hover = 0;
-        resume = 0, restart = 0, back_men = 0, back_stat = 0, back_choce = 0, instruc= 0, sav=0;
+        resume = 0, restart = 0, back_men = 0, back_stat = 0, back_choce = 0, instruc = 0, sav = 0;
         updateMusic();
     }
 }
@@ -3200,6 +3290,7 @@ int main(int argc, char *argv[])
     iLoadImage(&bg_3, "assets/images/bg_3.png");
     iLoadImage(&bg_4, "assets/images/bg_4.png");
     iLoadImage(&bg_7, "assets/images/bg_7.png");
+    iLoadImage(&bg_00, "assets/images/bg00.jpg");
     iInitialize(width, height, "Bouncy Bonanza");
     iSetTimer(400, toggleCursor);
     return 0;
