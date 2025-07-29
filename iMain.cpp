@@ -3152,8 +3152,11 @@ void iMouse(int button, int state, int mx, int my)
             else if (mx >= 313 && mx <= 400 && my >= 288 && my <= 331)
             {
                 music_vol = 0;
-                if (ch != -1)
-                    iPauseSound(ch);
+                if (ch != -1){
+                    iPauseSound(menu_muse);
+                    iPauseSound(game_muse);
+                    ch=-1;
+                }
             }
             else if (mx >= 232 && mx <= 287 && my >= 356 && my <= 396)
             {
