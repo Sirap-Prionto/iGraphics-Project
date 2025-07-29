@@ -668,10 +668,14 @@ void check_collision(int i, int j)
     {
         startchecking = 0;
         all_static_balls[i][j].exist = 0;
-        if ((j - 1) >= 0)
+        if ((j - 1) >= 0){
             all_static_balls[i][j - 1].exist = 0;
-        if ((j + 1) < 25)
+            score++;
+        }
+        if ((j + 1) < 25){
             all_static_balls[i][j + 1].exist = 0;
+            score++;    
+        }
     }
 
     // for bomb
@@ -682,8 +686,10 @@ void check_collision(int i, int j)
         {
             for (int J = -2; J <= 2; J++)
             {
-                if ((I + i) >= 0 && (I + i) < 30 && (J + j) >= 0 && (J + j) <= 24)
+                if ((I + i) >= 0 && (I + i) < 30 && (J + j) >= 0 && (J + j) <= 24){
                     all_static_balls[i + I][j + J].exist = 0;
+                    score++;
+                }
             }
         }
         resetBall();
