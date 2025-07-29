@@ -135,7 +135,7 @@ static vector<SaveFileInfo> saveInfos;
 struct ScoreEntry
 {
     string name;
-    int combo;
+    int score;
     int time;
 };
 static vector<ScoreEntry> highScores;
@@ -424,9 +424,12 @@ void setBall()
     dy = velocity * mouse_y / mouse_r;
     moves++;
 }
-int combo = 0;
+int combo = 0, score = 0;
 void resetBall()
 {
+    if (combo > 3)
+        score += combo;
+
     throw_ball = 0;
     ball_x = 250;
     ball_y = 50;
@@ -480,8 +483,9 @@ void resetBall()
     }
     else if (combo >= 4)
     {
-        r = g = b = 256;
+        r = g = b = 255;
     }
+    combo = 0;
 }
 
 int dotdistance = 20;
@@ -951,7 +955,7 @@ void saveGameState()
     time_t now = time(NULL);
     strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", localtime(&now));
     fprintf(fp, "%s %s %s %s\n", modeStr, playerName, timeBuf, dateStr);
-    fprintf(fp, "combo %d\n", combo);
+    fprintf(fp, "score %d\n", score);
     fprintf(fp, "moves %d\n", moves);
     for (int i = 0; i < 31; ++i)
     {
@@ -980,7 +984,7 @@ void loadGameState(const string &filepath)
     fscanf(fp, "submode %d\n", &subModeSelect);
     fscanf(fp, "time %d\n", &savedTime);
     fscanf(fp, "name %[^\n]", playerName);
-    fscanf(fp, "combo %d\n", &combo);
+    fscanf(fp, "score %d\n", &score);
     fscanf(fp, "moves %d\n", &moves);
     for (int i = 0; i < 31; ++i)
     {
@@ -1009,17 +1013,19 @@ void loadGameState(const string &filepath)
 void listSaveFiles()
 {
     saveInfos.clear();
-    const vector<pair<string,string>> files = {
-        {"save/time.txt","Time Rush"},
-        {"save/space.txt","Space Blast"}
-    };
-    for (auto &p : files) {
+    const vector<pair<string, string>> files = {
+        {"save/time.txt", "Time Rush"},
+        {"save/space.txt", "Space Blast"}};
+    for (auto &p : files)
+    {
         ifstream file(p.first);
-        if (!file) continue;
+        if (!file)
+            continue;
         SaveFileInfo info;
         info.modeName = p.second;
         string line;
-        while (getline(file, line)) {
+        while (getline(file, line))
+        {
             if (line.rfind("time ", 0) == 0)
                 info.elapsedSec = stoi(line.substr(5));
             else if (line.rfind("name ", 0) == 0)
@@ -1048,11 +1054,11 @@ void loadHighScores(int mode)
     {
         ScoreEntry s;
         if (mode == 1)
-            file >> s.name >> s.combo >> s.time;
+            file >> s.name >> s.score >> s.time;
         else
         {
             file >> s.name >> s.time;
-            s.combo = 0;
+            s.score = 0;
         }
 
         if (!file.fail())
@@ -1062,7 +1068,7 @@ void loadHighScores(int mode)
 
     if (mode == 1)
         sort(highScores.begin(), highScores.end(), [](auto &a, auto &b)
-             { return a.combo > b.combo; });
+             { return a.score > b.score; });
     else
         sort(highScores.begin(), highScores.end(), [](auto &a, auto &b)
              { return a.time < b.time; });
@@ -1347,14 +1353,13 @@ void iDraw()
                 all_ball_down();
                 moves = 0;
             }
-
-            char cmb[12];
-            sprintf(cmb, "COMBO: %i", (combo >= 2) ? combo : 0);
+            char scr[20];
+            sprintf(scr, "Score:%d", score);
             if (combo_hove == 0 || option_screen != 0)
                 iSetColor(19, 38, 46);
             else if (combo_hove == 1 && option_screen == 0)
                 iSetColor(157, 190, 204);
-            iTextBold(10, 25, cmb, GLUT_BITMAP_8_BY_13);
+            iTextBold(10, 25, scr, GLUT_BITMAP_8_BY_13);
             if (option_screen == 1)
             {
                 iSetTransparentColor(159, 181, 176, 0.25);
@@ -1812,10 +1817,10 @@ void iDraw()
                 iTextBold(200, 280, "No save files", GLUT_BITMAP_HELVETICA_18);
                 return;
             }
-             const char *paths[2] = { "save/time.txt", "save/space.txt" };
+            const char *paths[2] = {"save/time.txt", "save/space.txt"};
             for (int i = 0; i < (int)saveInfos.size(); ++i)
             {
-                int y = 472-i*30;
+                int y = 472 - i * 30;
                 if (i == hoveredSaveIdx)
                 {
                     iSetColor(15, 36, 28);
@@ -1824,19 +1829,19 @@ void iDraw()
                     curv(85, y - 15, 335, 31, 6);
                     iSetColor(0, 0, 0);
                 }
-               
-                    FILE *f = fopen(paths[i], "r");
-                    if (!f) continue;
-                    char mode[20], name[30], timeStr[6], date[11];
-                    if(fscanf(f, "%19s %29s %5s %10s", mode, name, timeStr, date) == 4){
-                        iTextBold(colX[0], y, mode);
-                        iTextBold(colX[1], y, name);
-                        iTextBold(colX[2], y, timeStr);
-                        iTextBold(colX[3], y, date);
-                    }
-                    fclose(f);
-                
 
+                FILE *f = fopen(paths[i], "r");
+                if (!f)
+                    continue;
+                char mode[20], name[30], timeStr[6], date[11];
+                if (fscanf(f, "%19s %29s %5s %10s", mode, name, timeStr, date) == 4)
+                {
+                    iTextBold(colX[0], y, mode);
+                    iTextBold(colX[1], y, name);
+                    iTextBold(colX[2], y, timeStr);
+                    iTextBold(colX[3], y, date);
+                }
+                fclose(f);
             }
         }
         else if (screen == 6)
@@ -1942,11 +1947,11 @@ void iDraw()
                 return;
             }
             iSetColor(12, 26, 19);
-            iTextBold(100, 473, "Name - Combo - Time", GLUT_BITMAP_9_BY_15);
+            iTextBold(100, 473, "Name - Score - Time", GLUT_BITMAP_9_BY_15);
             for (auto &s : highScores)
             {
                 char line[100];
-                sprintf(line, "%s - Combo: %d, Time: %ds", s.name.c_str(), s.combo, s.time);
+                sprintf(line, "%s - Score: %d, Time: %ds", s.name.c_str(), s.score, s.time);
                 iTextBold(100, y, line);
                 y -= 30;
             }
@@ -2112,6 +2117,14 @@ void iDraw()
         if (!gameOverState)
         {
             saveGameState();
+            const char *hs = (gameModeValue == 1) ? "save/timerush.txt" : "save/spaceblast.txt";
+            FILE *hf = fopen(hs, "a");
+            if (hf)
+            {
+                int elapsed = int(time(0) - gameStartTime - pauseDuration);
+                fprintf(hf, "%s %d %d\n", playerName, score, elapsed);
+                fclose(hf);
+            }
             gameOverState = true;
         }
         iSetColor(150, 0, 0);
@@ -2493,7 +2506,7 @@ void iMouseMove(int mx, int my)
             const int startY = 490;
             const int rowH = 30;
             const int leftX = 90;
-            const int rightX = 420; 
+            const int rightX = 420;
             for (int i = 0; i < (int)saveInfos.size(); ++i)
             {
                 int rowTop = startY - i * rowH;
@@ -2961,6 +2974,14 @@ void iMouse(int button, int state, int mx, int my)
                     if (mx >= 160 && mx <= 240 && my >= 320 && my <= 350)
                     {
                         saveGameState();
+                        const char *hs = (gameModeValue == 1) ? "save/timerush.txt" : "save/spaceblast.txt";
+                        FILE *hf = fopen(hs, "a");
+                        if (hf)
+                        {
+                            int elapsed = int(time(0) - gameStartTime - pauseDuration);
+                            fprintf(hf, "%s %d %d\n", playerName, score, elapsed);
+                            fclose(hf);
+                        }
                         option_screen = 1;
                     }
                     else if (mx >= 260 && mx <= 340 && my >= 320 && my <= 350)
@@ -2980,9 +3001,10 @@ void iMouse(int button, int state, int mx, int my)
                     screenCount = 1, screen = 1;
                     updateMusic();
                 }
-                else if (hoveredSaveIdx >= 0) {
+                else if (hoveredSaveIdx >= 0)
+                {
                     const auto &inf = saveInfos[hoveredSaveIdx];
-                    string path = (inf.modeName == "Time Rush")? "save/time.txt" : "save/space.txt";
+                    string path = (inf.modeName == "Time Rush") ? "save/time.txt" : "save/space.txt";
                     loadGameState(path);
                     screen = 2;
                     option_screen = 0;
