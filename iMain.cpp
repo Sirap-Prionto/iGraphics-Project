@@ -109,21 +109,29 @@ int getTextWidth(const char *text)
     }
     return width;
 }
-struct Bubble { double x,y,speed; };
-static vector<Bubble> transitionBubbles;
-static bool isTransitioning = false;
-static int  pendingScreenCount = -1;
-static int  pendingScreen = -1;
-void startScreenTransition(int newSC, int newS){
-    isTransitioning= true;
-    pendingScreenCount= newSC;
-    pendingScreen= newS;
-    transitionBubbles.clear();
-    for(int i=0;i<100;i++){
-      transitionBubbles.push_back({
-        double(rand()%width), 0.0, double(2 + rand()%3)});
-    }
-}
+// struct Bubble { double x,y,speed; };
+// static vector<Bubble> transitionBubbles;
+// static bool isTransitioning = false;
+// static int  pendingScreenCount = -1;
+// static int  pendingScreen = -1;
+// void startScreenTransition(int newSC, int newS){
+//     isTransitioning= true;
+//     pendingScreenCount= newSC;
+//     pendingScreen= newS;
+//     transitionBubbles.clear();
+//     for(int i=0;i<100;i++){
+//       transitionBubbles.push_back({
+//         double(rand()%width), 0.0, double(2 + rand()%3)});
+//     }
+// }
+struct SaveFileInfo
+{
+    string modeName;
+    string playerName;
+    int elapsedSec;
+    string date;
+};
+static vector<SaveFileInfo> saveInfos;
 struct ScoreEntry
 {
     string name;
@@ -933,16 +941,22 @@ void saveGameState()
 {
     const char *filename = (gameModeValue == 1) ? "save/time.txt" : "save/space.txt";
     FILE *fp = fopen(filename, "w");
-    if (!fp) return;
+    if (!fp)
+        return;
     int elapsed = (int)(time(0) - gameStartTime - pauseDuration);
-    fprintf(fp, "mode %d\n", gameModeValue);
-    fprintf(fp, "submode %d\n", subModeSelect);
-    fprintf(fp, "time %d\n", elapsed);
-    fprintf(fp, "name %s\n", playerName);
+    const char *modeStr = (gameModeValue == 1) ? "Time Rush" : "Space Blast";
+    int mm = elapsed / 60, ss = elapsed % 60;
+    char timeBuf[6], dateStr[11];
+    sprintf(timeBuf, "%02d:%02d", mm, ss);
+    time_t now = time(NULL);
+    strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", localtime(&now));
+    fprintf(fp, "%s %s %s %s\n", modeStr, playerName, timeBuf, dateStr);
     fprintf(fp, "combo %d\n", combo);
     fprintf(fp, "moves %d\n", moves);
-    for(int i = 0; i < 31; ++i){
-        for(int j = 0; j < 25; ++j){
+    for (int i = 0; i < 31; ++i)
+    {
+        for (int j = 0; j < 25; ++j)
+        {
             auto &b = all_static_balls[i][j];
             fprintf(fp, "%d %d %d %d\n",
                     b.exist,
@@ -968,17 +982,19 @@ void loadGameState(const string &filepath)
     fscanf(fp, "name %[^\n]", playerName);
     fscanf(fp, "combo %d\n", &combo);
     fscanf(fp, "moves %d\n", &moves);
-    for(int i = 0; i < 31; ++i){
-        for(int j = 0; j < 25; ++j){
+    for (int i = 0; i < 31; ++i)
+    {
+        for (int j = 0; j < 25; ++j)
+        {
             int exist, r, g, b;
             fscanf(fp, "%d %d %d %d\n", &exist, &r, &g, &b);
             all_static_balls[i][j].exist = exist;
-            all_static_balls[i][j].red   = r;
+            all_static_balls[i][j].red = r;
             all_static_balls[i][j].green = g;
-            all_static_balls[i][j].blue  = b;
+            all_static_balls[i][j].blue = b;
         }
     }
-set_coordinates();
+    set_coordinates();
     fclose(fp);
     screen = 2;
     screenCount = 1;
@@ -990,33 +1006,28 @@ set_coordinates();
     timeRushRound = 0;
     printf("Loaded game from %s\n", filepath.c_str());
 }
-vector<string> saveFiles;
 void listSaveFiles()
 {
-    saveFiles.clear();
-    FILE *fp;
-    char buf[256];
-    fp = fopen("save/time.txt", "r");
-    if (fp)
-    {
-        while (fgets(buf, sizeof(buf), fp))
-        {
-            buf[strcspn(buf, "\r\n")] = 0;
-            if (buf[0])
-                saveFiles.push_back(buf);
+    saveInfos.clear();
+    const vector<pair<string,string>> files = {
+        {"save/time.txt","Time Rush"},
+        {"save/space.txt","Space Blast"}
+    };
+    for (auto &p : files) {
+        ifstream file(p.first);
+        if (!file) continue;
+        SaveFileInfo info;
+        info.modeName = p.second;
+        string line;
+        while (getline(file, line)) {
+            if (line.rfind("time ", 0) == 0)
+                info.elapsedSec = stoi(line.substr(5));
+            else if (line.rfind("name ", 0) == 0)
+                info.playerName = line.substr(5);
+            else if (line.rfind("date ", 0) == 0)
+                info.date = line.substr(5);
         }
-        fclose(fp);
-    }
-    fp = fopen("save/space.txt", "r");
-    if (fp)
-    {
-        while (fgets(buf, sizeof(buf), fp))
-        {
-            buf[strcspn(buf, "\r\n")] = 0;
-            if (buf[0])
-                saveFiles.push_back(buf);
-        }
-        fclose(fp);
+        saveInfos.push_back(info);
     }
 }
 
@@ -1061,28 +1072,28 @@ Image bg_0, bg_3, bg_4, bg_7, bg_00;
 void iDraw()
 {
     // place your drawing codes here
-    if(isTransitioning){
-        iClear();
-        for(auto &b:transitionBubbles){
-        iSetColor(200,220,255);
-        iFilledCircle(b.x,b.y,5);
-        b.y += b.speed;
-        }
-        transitionBubbles.erase(
-        std::remove_if(
-            transitionBubbles.begin(),
-            transitionBubbles.end(),
-            [&](auto &b){ return b.y > height; }
-        ),
-        transitionBubbles.end()
-        );
-        if(transitionBubbles.empty()){
-        isTransitioning = false;
-        screenCount     = pendingScreenCount;
-        screen          = pendingScreen;
-        }
-        return;
-    }
+    // if(isTransitioning){
+    //     iClear();
+    //     for(auto &b:transitionBubbles){
+    //     iSetColor(200,220,255);
+    //     iFilledCircle(b.x,b.y,5);
+    //     b.y += b.speed;
+    //     }
+    //     transitionBubbles.erase(
+    //     std::remove_if(
+    //         transitionBubbles.begin(),
+    //         transitionBubbles.end(),
+    //         [&](auto &b){ return b.y > height; }
+    //     ),
+    //     transitionBubbles.end()
+    //     );
+    //     if(transitionBubbles.empty()){
+    //     isTransitioning = false;
+    //     screenCount     = pendingScreenCount;
+    //     screen          = pendingScreen;
+    //     }
+    //     return;
+    // }
 
     if (screenCount == 0)
     {
@@ -1324,8 +1335,10 @@ void iDraw()
                 victoryType = 1;
             }
             gameover();
-            if(r==127 && g==127 && b==127) velocity=8;
-            else velocity=16;
+            if (r == 127 && g == 127 && b == 127)
+                velocity = 8;
+            else
+                velocity = 16;
             if (throw_ball)
                 drawBall();
 
@@ -1793,29 +1806,37 @@ void iDraw()
             const char *titles[] = {"Mode", "Name", "Time", "Date"};
             for (int c = 0; c < 4; ++c)
                 iTextBold(colX[c], 500, titles[c], GLUT_BITMAP_HELVETICA_18);
-            if (saveFiles.empty())
+            if (saveInfos.empty())
             {
                 iSetColor(12, 26, 19);
                 iTextBold(200, 280, "No save files", GLUT_BITMAP_HELVETICA_18);
                 return;
             }
-            for (int i = 0; i < (int)saveFiles.size(); ++i)
+             const char *paths[2] = { "save/time.txt", "save/space.txt" };
+            for (int i = 0; i < (int)saveInfos.size(); ++i)
             {
-                int y = 490-i*30;
+                int y = 472-i*30;
                 if (i == hoveredSaveIdx)
                 {
                     iSetColor(15, 36, 28);
-                    curv_border(84.2, y-30-0.8, 336.6, 32.6,6);
+                    curv_border(84.2, y - 15 - 0.8, 336.6, 32.6, 6);
                     iSetColor(200, 230, 200);
-                    curv(85, y-30, 335, 31,6);
+                    curv(85, y - 15, 335, 31, 6);
+                    iSetColor(0, 0, 0);
                 }
-                istringstream iss(saveFiles[i]);
-                string f[4];
-                iss >> f[0] >> f[1] >> f[2] >> f[3];
-                iSetColor(12, 26, 19);
-                const int colX[] = {90, 180, 260, 335};
-                for (int c = 0; c < 4; ++c)
-                    iTextBold(colX[c], y-20, f[c].c_str());
+               
+                    FILE *f = fopen(paths[i], "r");
+                    if (!f) continue;
+                    char mode[20], name[30], timeStr[6], date[11];
+                    if(fscanf(f, "%19s %29s %5s %10s", mode, name, timeStr, date) == 4){
+                        iTextBold(colX[0], y, mode);
+                        iTextBold(colX[1], y, name);
+                        iTextBold(colX[2], y, timeStr);
+                        iTextBold(colX[3], y, date);
+                    }
+                    fclose(f);
+                
+
             }
         }
         else if (screen == 6)
@@ -2045,16 +2066,20 @@ void iDraw()
             iSetColor(42, 54, 53);
             iTextBold(339, 299, "Off", GLUT_BITMAP_HELVETICA_18);
         }
+        iSetColor(55, 74, 66);
+        curv_border(232, 221, 166, 40, 14);
+        iSetColor(154, 204, 237);
+        curv(232, 221, 166, 40, 14);
         iSetColor(42, 54, 53);
-        iTextBold(246, 233, "0.5x", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(246, 234, "0.5x", GLUT_BITMAP_HELVETICA_18);
         iSetColor(255, 255, 255);
         curv_border(288, 221, 55, 40, 13);
         iSetColor(42, 54, 53);
         curv(288, 221, 55, 40, 13);
         iSetColor(220, 247, 235);
-        iTextBold(305, 233, "1x", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(305, 234, "1x", GLUT_BITMAP_HELVETICA_18);
         iSetColor(42, 54, 53);
-        iTextBold(356, 233, "1.5x", GLUT_BITMAP_HELVETICA_18);
+        iTextBold(356, 234, "1.5x", GLUT_BITMAP_HELVETICA_18);
     }
     else if (screenCount == 4)
     {
@@ -2468,8 +2493,8 @@ void iMouseMove(int mx, int my)
             const int startY = 490;
             const int rowH = 30;
             const int leftX = 90;
-            const int rightX = 420; // tweak to cover full row width
-            for (int i = 0; i < (int)saveFiles.size(); ++i)
+            const int rightX = 420; 
+            for (int i = 0; i < (int)saveInfos.size(); ++i)
             {
                 int rowTop = startY - i * rowH;
                 int rowBot = rowTop - rowH;
@@ -2635,11 +2660,11 @@ void iMouse(int button, int state, int mx, int my)
             }
             else if (mx >= 155 && mx <= 333 && my >= 417 && my <= 457)
             {
-                startScreenTransition(1,1);
                 in_menu = 1;
                 in_game = 0;
                 updateMusic();
                 proceed = 0;
+                screenCount = 1;
             }
             else if (mx >= 155 && mx <= 333 && my >= 346 && my <= 391)
             {
@@ -2955,12 +2980,10 @@ void iMouse(int button, int state, int mx, int my)
                     screenCount = 1, screen = 1;
                     updateMusic();
                 }
-                else if (hoveredSaveIdx >= 0)
-                {
-                    if (saveFiles[hoveredSaveIdx].find("TimeRush") != string::npos)
-                        loadGameState("save/time.txt");
-                    else if (saveFiles[hoveredSaveIdx].find("SpaceBlast") != string::npos)
-                        loadGameState("save/space.txt");
+                else if (hoveredSaveIdx >= 0) {
+                    const auto &inf = saveInfos[hoveredSaveIdx];
+                    string path = (inf.modeName == "Time Rush")? "save/time.txt" : "save/space.txt";
+                    loadGameState(path);
                     screen = 2;
                     option_screen = 0;
                     hoveredSaveIdx = -1;
