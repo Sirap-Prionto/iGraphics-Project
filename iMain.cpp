@@ -1921,7 +1921,7 @@ void iDraw()
                 return;
             }
             iSetColor(12, 26, 19);
-            iTextBold(100, 473, "Name - Combo - Time", GLUT_BITMAP_HELVETICA_18);
+            iTextBold(100, 473, "Name - Combo - Time", GLUT_BITMAP_9_BY_15);
             for (auto &s : highScores)
             {
                 char line[100];
@@ -1932,7 +1932,7 @@ void iDraw()
         }
         else if (score_screen == 2)
         {
-            int y = 500;
+            int y = 430;
             iSetColor(9, 20, 28);
             curv_border(80, 155, 340, 310, 14);
             iSetColor(167, 201, 189);
@@ -1944,7 +1944,7 @@ void iDraw()
                 return;
             }
             iSetColor(12, 26, 19);
-            iTextBold(100, 473, "Name - Time", GLUT_BITMAP_TIMES_ROMAN_24);
+            iTextBold(100, 473, "Name - Time", GLUT_BITMAP_9_BY_15);
             for (auto &s : highScores)
             {
                 char line[100];
@@ -2045,6 +2045,16 @@ void iDraw()
             iSetColor(42, 54, 53);
             iTextBold(339, 299, "Off", GLUT_BITMAP_HELVETICA_18);
         }
+        iSetColor(42, 54, 53);
+        iTextBold(246, 233, "0.5x", GLUT_BITMAP_HELVETICA_18);
+        iSetColor(255, 255, 255);
+        curv_border(288, 221, 55, 40, 13);
+        iSetColor(42, 54, 53);
+        curv(288, 221, 55, 40, 13);
+        iSetColor(220, 247, 235);
+        iTextBold(305, 233, "1x", GLUT_BITMAP_HELVETICA_18);
+        iSetColor(42, 54, 53);
+        iTextBold(356, 233, "1.5x", GLUT_BITMAP_HELVETICA_18);
     }
     else if (screenCount == 4)
     {
@@ -2626,8 +2636,8 @@ void iMouse(int button, int state, int mx, int my)
             else if (mx >= 155 && mx <= 333 && my >= 417 && my <= 457)
             {
                 startScreenTransition(1,1);
-                in_menu     = 1;
-                in_game     = 0;
+                in_menu = 1;
+                in_game = 0;
                 updateMusic();
                 proceed = 0;
             }
@@ -2987,10 +2997,6 @@ void iMouse(int button, int state, int mx, int my)
         else if (screenCount == 2)
         {
             // Code for high-score screen
-            if ((mx - 421) * (mx - 421) + (my - 548) * (my - 548) <= 289)
-            {
-                screenCount = 0;
-            }
             if (score_screen == 0)
             {
                 if (mx >= 220 && mx <= 380 && my >= 360 && my < 400)
@@ -3004,6 +3010,24 @@ void iMouse(int button, int state, int mx, int my)
                     // Back to menu
                     score_screen = 2;
                     loadHighScores(2);
+                }
+                else if ((mx - 421) * (mx - 421) + (my - 548) * (my - 548) <= 289)
+                {
+                    screenCount = 0;
+                }
+            }
+            else if (score_screen == 1)
+            {
+                if ((mx - 421) * (mx - 421) + (my - 548) * (my - 548) <= 289)
+                {
+                    score_screen = 0;
+                }
+            }
+            else if (score_screen == 2)
+            {
+                if ((mx - 421) * (mx - 421) + (my - 548) * (my - 548) <= 289)
+                {
+                    score_screen = 0;
                 }
             }
         }
