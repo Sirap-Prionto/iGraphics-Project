@@ -1057,8 +1057,8 @@ void loadHighScores(int mode)
             file >> s.name >> s.score >> s.time;
         else
         {
-            file >> s.name >> s.time;
-            s.score = 0;
+            file >> s.name >> s.score;
+            // s.score = 0;
         }
 
         if (!file.fail())
@@ -1071,7 +1071,7 @@ void loadHighScores(int mode)
              { return a.score > b.score; });
     else
         sort(highScores.begin(), highScores.end(), [](auto &a, auto &b)
-             { return a.time < b.time; });
+             { return a.score < b.score; });
 }
 
 Image bg_0, bg_3, bg_4, bg_7, bg_00;
@@ -1951,7 +1951,7 @@ void iDraw()
             for (auto &s : highScores)
             {
                 char line[100];
-                sprintf(line, "%s - Score: %d, Time: %ds", s.name.c_str(), s.score, s.time);
+                sprintf(line, "%s -    %d -    %ds", s.name.c_str(), s.score, s.time);
                 iTextBold(100, y, line);
                 y -= 30;
             }
@@ -1974,7 +1974,7 @@ void iDraw()
             for (auto &s : highScores)
             {
                 char line[100];
-                sprintf(line, "%s - Time: %ds", s.name.c_str(), s.time);
+                sprintf(line, "%s -     %d", s.name.c_str(), s.score);
                 iTextBold(100, y, line);
                 y -= 30;
             }
